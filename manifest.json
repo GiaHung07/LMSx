@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "LMSX",
+  "short_name": "LMSX",
+  "version": "3.6",
+  "description": "LMSX - Auto video, auto quiz, auto navigation",
+  "permissions": [
+    "storage",
+    "webRequest",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://lms.ptit.edu.vn/*"
+  ],
+  "icons": {
+    "16": "assets/icons/icon16.png",
+    "32": "assets/icons/icon32.png",
+    "48": "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://lms.ptit.edu.vn/*"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false,
+      "js": [
+        "obfuscate.js",
+        "js/runtime/bridge.js",
+        "content.js"
+      ],
+      "css": []
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "PTIT LMS Auto",
+    "default_icon": {
+      "16": "assets/icons/icon16.png",
+      "32": "assets/icons/icon32.png",
+      "48": "assets/icons/icon48.png"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "inject.js"
+      ],
+      "matches": [
+        "https://lms.ptit.edu.vn/*"
+      ]
+    }
+  ]
+}
