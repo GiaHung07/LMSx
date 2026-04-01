@@ -47,3 +47,9 @@ copilot-messages.log
 # System files
 .DS_Store
 .project/attachments/files/**
+
+# Skills and agent folders (not for git)
+.agents/
+.claude/
+.windsurf/
+everything/

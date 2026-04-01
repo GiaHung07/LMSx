@@ -5,7 +5,7 @@ function buildUI() {
     S.shadow = host.attachShadow({ mode: 'closed' });
 
     const style = document.createElement('style');
-    const fontUrl = globalThis.chrome?.runtime?.getURL?.('JetBrainsMono-Regular.woff2') || '';
+    const fontUrl = globalThis.chrome?.runtime?.getURL?.('assets/fonts/JetBrainsMono-Regular.woff2') || '';
     const fontFace = fontUrl
         ? `@font-face{font-family:'JetBrains Mono';src:url('${fontUrl}') format('woff2');font-weight:400;font-style:normal;font-display:swap;}`
         : '';

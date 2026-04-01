@@ -1,7 +1,7 @@
 // content.js - LMSX build
 (function () {
     'use strict';
-    const __LMSX_BUILD_STAMP__ = "2026-04-01T08:35:19.146Z";
+    const __LMSX_BUILD_STAMP__ = "2026-04-01T08:40:09.566Z";
 
     // -- main.js --
     const LMSX_VERSION = '3.6';
@@ -1961,7 +1961,7 @@
         S.shadow = host.attachShadow({ mode: 'closed' });
 
         const style = document.createElement('style');
-        const fontUrl = globalThis.chrome?.runtime?.getURL?.('JetBrainsMono-Regular.woff2') || '';
+        const fontUrl = globalThis.chrome?.runtime?.getURL?.('assets/fonts/JetBrainsMono-Regular.woff2') || '';
         const fontFace = fontUrl
             ? `@font-face{font-family:'JetBrains Mono';src:url('${fontUrl}') format('woff2');font-weight:400;font-style:normal;font-display:swap;}`
             : '';
