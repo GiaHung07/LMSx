@@ -395,6 +395,11 @@ async function runAutomationCycle(reason = 'manual') {
                 scheduleRun('quiz-await-network', 5000 + jitter());
                 return;
             }
+            if (result.reason === 'quiz-not-found' || result.reason === 'question-not-found') {
+                setState('running-quiz', { capability: 'quiz', detail: 'Quiz đang tải, chờ câu hỏi hiển thị' });
+                scheduleRun('quiz-dom-wait', 1200 + jitter());
+                return;
+            }
             if (result.waitingUser) return;
             scheduleRun('quiz-follow-up', 1000 + jitter());
             return;

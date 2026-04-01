@@ -1,7 +1,7 @@
 // content.js - LMSX build
 (function () {
     'use strict';
-    const __LMSX_BUILD_STAMP__ = "2026-04-01T19:08:18.280Z";
+    const __LMSX_BUILD_STAMP__ = "2026-04-01T19:44:37.851Z";
 
     // -- main.js --
     const LMSX_VERSION = '3.6';
@@ -3563,6 +3563,11 @@
                 const result = await solveQuiz();
                 if (result.submitted) {
                     scheduleRun('quiz-await-network', 5000 + jitter());
+                    return;
+                }
+                if (result.reason === 'quiz-not-found' || result.reason === 'question-not-found') {
+                    setState('running-quiz', { capability: 'quiz', detail: 'Quiz đang tải, chờ câu hỏi hiển thị' });
+                    scheduleRun('quiz-dom-wait', 1200 + jitter());
                     return;
                 }
                 if (result.waitingUser) return;
