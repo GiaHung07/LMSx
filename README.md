@@ -1,175 +1,255 @@
 <div align="center">
 
-# LMSX (PTIT LMS Auto)
+<br/>
 
-### Bảng Điều Khiển Tự Động Học · Hệ thống bài giảng số PTIT
+```
+██╗     ███╗   ███╗███████╗██╗  ██╗
+██║     ████╗ ████║██╔════╝╚██╗██╔╝
+██║     ██╔████╔██║███████╗ ╚███╔╝ 
+██║     ██║╚██╔╝██║╚════██║ ██╔██╗ 
+███████╗██║ ╚═╝ ██║███████║██╔╝ ██╗
+╚══════╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝
+```
 
-[![Chrome](https://img.shields.io/badge/Chrome-MV3-4285F4?logo=googlechrome&logoColor=white&style=flat-square)](https://chromewebstore.google.com)
-[![Edge](https://img.shields.io/badge/Edge-Supported-0078D4?logo=microsoftedge&logoColor=white&style=flat-square)](https://microsoftedge.microsoft.com)
-[![Version](https://img.shields.io/badge/Version-v3.6-22c55e?style=flat-square)](#lịch-sử-phiên-bản)
-[![License](https://img.shields.io/badge/License-Personal-f59e0b?style=flat-square)](#lưu-ý)
+**PTIT LMS Automation · Chrome Extension MV3**
 
-**LMSX v3.6** là tiện ích trình duyệt Manifest V3 được tái cấu trúc hoàn toàn, tự động hóa toàn diện quá trình học trên nền tảng [lms.ptit.edu.vn](https://lms.ptit.edu.vn). Extention cung cấp tính năng tự động phát video tốc độ x4, ứng dụng trí tuệ nhân tạo (Gemini API) để giải quiz và chuyển bài tự động. Hệ thống mới được trang bị UI thông minh ngăn cách (Shadow DOM) tĩnh, siêu mượt.
+[![Version](https://img.shields.io/badge/version-3.6-22c55e?style=flat-square&logo=semanticrelease&logoColor=white)](https://github.com/Giahung07/LMSX)
+[![Chrome](https://img.shields.io/badge/Chrome-MV3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com)
+[![Edge](https://img.shields.io/badge/Edge-Supported-0078D4?style=flat-square&logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com)
+[![Node](https://img.shields.io/badge/Node.js-required-339933?style=flat-square&logo=nodedotjs&logoColor=white)](#bước-2--build)
+[![License](https://img.shields.io/badge/license-Personal-f59e0b?style=flat-square)](#lưu-ý)
+
+<br/>
+
+*Tự động hoá toàn bộ vòng lặp học — Video × Quiz × Chuyển bài — trên `lms.ptit.edu.vn`*
+
+<br/>
 
 </div>
 
 ---
 
-## Mục lục
+## Tổng quan
 
-- [Tính năng Mới (v3.6)](#tính-năng-mới-v36)
-- [Cài đặt Gemini API Key](#cài-đặt-gemini-api-key-để-giải-quiz-ai)
-- [Hướng Dẫn Cài Đặt Tools](#hướng-dẫn-cài-đặt-tools)
-- [Hướng dẫn sử dụng](#hướng-dẫn-sử-dụng)
-- [Kiến trúc hệ thống](#kiến-trúc-hệ-thống)
-- [Câu hỏi thường gặp](#câu-hỏi-thường-gặp)
-- [Lưu ý](#lưu-ý)
+LMSX v3.6 là Chrome Extension Manifest V3 được viết lại hoàn toàn theo kiến trúc module hoá. Extension tự động xử lý toàn bộ chu trình học:
 
----
-
-## Tính năng Mới (v3.6)
-
-| Tính năng                        | Mô tả                                                                                                                            |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| **Video Tốc Độ Cao (x4)**        | Tự ngầm phát (muted autoplay), khóa tốc độ 4x liên tục, tự detect >98% để qua bài                                                |
-| **Giải Quiz Bằng AI Gemini**     | Scan câu hỏi, trích xuất text gửi qua Gemini 2.5 Flash xử lý đáp án cực kỳ chính xác. Fallback luân phiên vòng tròn nếu AI sai/lỗi |
-| **Chuyển Bài Tự Động**           | Hoàn tất Video hoặc Quiz xong hệ thống tự động dò tìm nút ấn chuyển slide/bài học tiếp theo (Navigator)                          |
-| **Kháng Detect Bắt dính**        | Chống chặn Copy/Cut/Select của hệ thống mặc định (Stealth Bypass)                                                                |
-| **UI Chuyên Nghiệp (ShadowDOM)** | Panel xịn mịn hỗ trợ kéo thả (Drag), phóng to thu nhỏ (Resize), ẩn vào góc (minimize FAB), có báo thức log toast (Native UI)     |
-
----
-
-## Cài đặt Gemini API Key (Để giải Quiz AI)
-
-Tiện ích LMSX v3.6 sử dụng mô hình trí tuệ nhân tạo của Google (Gemini API) để tăng tính chuẩn xác khi giải bài tập Trắc Nghiệm và Điền từ. Mã API là miễn phí.
-_Nếu bạn không nhập API Key, Tools sẽ giải bằng phỏng đoán quay vòng (Vẫn vượt qua quiz)._
-
-1. Truy cập [Google AI Studio - Get API Key](https://aistudio.google.com/app/apikey) (Tham khảo docs nhanh: [Google AI Quickstart](https://ai.google.dev/gemini-api/docs/quickstart)).
-2. Đăng nhập bằng tài khoản Google của bạn.
-3. Nhấp vào **"Create API Key"** (màu xanh).
-4. **Copy mã API này** và dán vào ô **`GEMINI API`** trên Panel của tiện ích khi khởi động LMSX.
-   _(Extenion sẽ tự động lưu lại trong bộ nhớ trình duyệt `localStorage` an toàn để dùng cho các bài học sau)_
-
----
-
-## Hướng Dẫn Cài Đặt Tools
-
-> **Yêu cầu:** Google Chrome ≥ 109 hoặc Microsoft Edge ≥ 109 (hỗ trợ Manifest V3) và **Node.js**.
-
-### Bước 1 — Lấy Source
-
-```bash
-# Clone repository
-git clone https://github.com/Giahung07/LMSX.git
-
-# Hoặc tải ZIP và giải nén (Folder: LMS)
+```
+Video (x4) ──▶ Quiz (AI) ──▶ Chuyển bài ──▶ lặp lại
 ```
 
-### Bước 2 — Build và Tải vào trình duyệt
-
-Do phiên bản 3.6 sử dụng kiến trúc modules hoá chuyên nghiệp:
-
-1. Mở Terminal (CMD/PowerShell) ở thư mục `LMS`.
-2. Chạy lệnh: `node build.js` để gói code module thành file `content.js` chuẩn.
-3. Mở Trình duyệt, truy cập `chrome://extensions` (Chrome) hoặc `edge://extensions` (Edge).
-4. Bật **Developer mode** ở góc trên bên phải.
-5. Nhấn **Load unpacked** → Chọn đến thư mục `LMS`.
-6. Biểu tượng LMSX Auto xuất hiện và bật sáng.
+Hệ thống dùng **Shadow DOM** để cách ly UI hoàn toàn khỏi trang LMS, **AES-GCM** để mã hoá session token, và **Gemini API** để giải trắc nghiệm chính xác cao.
 
 ---
 
-## Hướng dẫn sử dụng
+## Tính năng
 
-Khi vào bất kỳ khóa học nào trên `lms.ptit.edu.vn`, panel LMSX v3.6 tự động xuất hiện.
-
-### Các thao tác giao diện chung
-
-| Thao tác                  | Hành vi                                                                                          |
-| ------------------------- | ------------------------------------------------------------------------------------------------ |
-| **Công tắc `Automation`** | Gạt bật lên màu đỏ: Tools bắt đầu vòng lặp auto toàn khoá học (Nhấn để ON/OFF)                   |
-| **Thanh Tiêu Đề**         | Click giữ chuột phần Header để **Kéo** bảng đi muôn nơi                                          |
-| **Góc dưới cùng (⤡ )**    | Click vào góc dưới bên phải panel để **Mở rộng / Kéo dãn** (Resize) màn hình log                 |
-| **Dấu ( - ) / Đóng**      | Nhấn dấu trừ để thu gọn Panel thành 1 Nút Mini (FAB) hình Tia Sét tròn nhỏ bên góc trái màn hình |
-| **Log Board**             | Màn hình đen theo dõi trực tuyến hành vi của Automation và tiến độ bài học.                      |
+| Module | Mô tả |
+|---|---|
+| `automation/video.js` | Autoplay muted, khoá tốc độ **4×**, phát hiện >98% để chuyển bài |
+| `automation/quiz.js` | Scrape câu hỏi → gửi **Gemini 2.5 Flash** → parse JSON → tự click đáp án |
+| `automation/navigator.js` | Dò nút chuyển slide/bài học, xử lý SPA navigation |
+| `stealth/bypass.js` | Vô hiệu hoá chặn Copy/Cut/Select/ContextMenu của OpenEdX |
+| `ui/panel.js` | Floating panel **Shadow DOM** — drag, resize, minimize thành FAB |
+| `background.js` | Service worker: AES-GCM encrypt token, intercept `Authorization` header |
+| `inject.js` | Hook XHR/fetch trong page context, bridge event về content script |
 
 ---
 
-## Kiến trúc hệ thống
+## Cài đặt
 
-Hệ thống được thiết kế theo dạng Component Module cao cấp:
+### Yêu cầu
+
+- Chrome ≥ 109 hoặc Edge ≥ 109 (Manifest V3)
+- Node.js (bất kỳ version LTS nào)
+
+### Bước 1 — Lấy source
+
+```bash
+git clone https://github.com/Giahung07/LMSX.git
+cd LMSX
+```
+
+hoặc tải ZIP → giải nén.
+
+### Bước 2 — Build
+
+```bash
+node build.js
+# [build] added main.js
+# [build] added storage/schema.js
+# ...
+# [build] content.js updated (2026-xx-xx)
+```
+
+> Trong quá trình dev: `node build.js --watch` để tự rebuild khi sửa file trong `src/`.
+
+### Bước 3 — Load vào Chrome
+
+1. Mở `chrome://extensions`
+2. Bật **Developer mode** (góc phải trên)
+3. Nhấn **Load unpacked** → chọn thư mục `LMSX`
+4. Icon LMSX xuất hiện trên toolbar
+
+---
+
+## Cấu hình API Key
+
+LMSX hỗ trợ hai nhà cung cấp AI — cấu hình qua panel (icon ⚙ góc phải):
+
+### OpenRouter
+
+1. Vào [openrouter.ai/keys](https://openrouter.ai/keys) → tạo API key
+2. Dán vào ô **OpenRouter** trong panel
+3. Model mặc định: `llama-3.3-70b-versatile`
+
+### Groq
+
+1. Vào [console.groq.com/keys](https://console.groq.com/keys) → tạo API key
+2. Dán vào ô **Groq** trong panel
+3. Model mặc định: `llama-3.3-70b-versatile`
+
+> Không nhập API key → extension fallback sang chế độ phỏng đoán xoay vòng (vẫn pass quiz nhưng độ chính xác thấp hơn).
+
+Key được lưu qua `chrome.storage.sync` — không gửi ra ngoài ngoài API call đến nhà cung cấp đã chọn.
+
+---
+
+## Sử dụng
+
+Truy cập bất kỳ khoá học nào trên `lms.ptit.edu.vn` — panel LMSX tự động xuất hiện.
+
+### Điều khiển panel
+
+| Thao tác | Hành vi |
+|---|---|
+| Toggle **Auto** | Bật/tắt vòng lặp tự động toàn khoá học |
+| Dot 🔴 | Ẩn panel — chỉ còn titlebar |
+| Dot 🟡 | Thu gọn log — giữ nguyên status bar |
+| Dot 🟢 | Chạy thủ công / resume |
+| Icon ⚙ | Flip sang màn hình cài đặt API key |
+| Kéo titlebar | Di chuyển panel trên màn hình |
+| Góc ⤡ | Resize vùng log |
+
+### Log panel
+
+```
+› Đọc câu hỏi...
+✓ Scrape xong
+› Gọi AI...
+✓ Nhận phản hồi
+› Đang điền đáp án...
+✓ Xong
+```
+
+---
+
+## Kiến trúc
 
 ```
 LMSX/
-├── build.js               Script gộp module (node)
-├── content.js             Output file sau khi build (Self-contained)
-├── manifest.json          Cấu hình MV3
-├── background.js          Service worker: AES-GCM encryption
-├── obfuscate.js           Hash ngẫu nhiên class/event name
-├── inject.js              Hook XHR/fetch trong page context
-├── js/runtime/bridge.js   Communication bridge
-├── src/                   Thư mục source code cho build
-│   ├── main.js            ← Global scope & states
-│   ├── init.js            ← Khởi động
-│   ├── ui/                ← Layout System (CSS/HTML strings), Animation
-│   ├── automation/        ← Engine giải Video / AI Quiz / Navigate Loop
-│   └── stealth/           ← Bypass chặn hành vi
-└── assets/                Icons và resources
+├── manifest.json              MV3 config
+├── background.js              Service worker (AES-GCM vault, message router)
+├── content.js                 Build output — tự động tạo bởi build.js
+├── inject.js                  Page context hook (XHR/fetch proxy)
+├── obfuscate.js               Session hash cho class/event name
+├── build.js                   Module bundler
+│
+├── src/
+│   ├── main.js                Global state & constants
+│   ├── init.js                Bootstrap
+│   ├── storage/
+│   │   ├── schema.js          Storage schema & defaults
+│   │   └── adapter.js         chrome.storage wrapper
+│   ├── runtime/
+│   │   ├── logger.js          Log system
+│   │   ├── state.js           Reactive state machine
+│   │   ├── selectors.js       DOM selector registry
+│   │   └── bridge.js          Content ↔ inject bridge
+│   ├── network/
+│   │   ├── providers.js       OpenRouter / Groq API client
+│   │   └── bridge.js          Network event relay
+│   ├── ui/
+│   │   ├── css.js             Shadow DOM stylesheet (Space Grotesk, JetBrains Mono)
+│   │   ├── html.js            Panel HTML template
+│   │   └── panel.js           Panel controller (drag, resize, flip, dot states)
+│   ├── automation/
+│   │   ├── video.js           Video speed lock & completion detection
+│   │   ├── quiz.js            Quiz scraper → AI → DOM click
+│   │   └── navigator.js       Lesson navigation loop
+│   └── stealth/
+│       └── bypass.js          Anti-block (copy/select/contextmenu)
+│
+└── assets/
+    ├── icons/                 icon16/32/48/128.png
+    └── fonts/
+        └── JetBrainsMono-Regular.woff2
 ```
 
-### Luồng dữ liệu Xử lý
+### Luồng xử lý quiz
 
 ```
-lms.ptit.edu.vn → XHR API calls
-    │
-    ├─▶ background.js   AES-GCM encrypt token → session storage
-    ├─▶ inject.js       Proxy hook XHR/fetch → bridge event (Bắt correct_map của Quiz API)
-    └─▶ content.js      Detect content → Đẩy qua Gemini qua fetch AI api → Push lại DOM Submit
+Page DOM
+  │
+  ├─▶ quiz.js          scrape câu hỏi + choices
+  │
+  ├─▶ providers.js     POST → OpenRouter / Groq API
+  │     {
+  │       model: "llama-3.3-70b-versatile",
+  │       temperature: 0.1,
+  │       response_format: { type: "json_object" }
+  │     }
+  │
+  ├─▶ AI Response      { "reasoning": "...", "index": 2 }
+  │
+  └─▶ quiz.js          click choices[index] → submit
 ```
+
+### Bảo mật
+
+- `Authorization` header của LMS được intercept bởi `background.js` và lưu **in-memory** với AES-GCM 256-bit
+- Vault tự xoá khi service worker suspend (`chrome.runtime.onSuspend`)
+- Class name và event name được hash ngẫu nhiên mỗi session qua `obfuscate.js`
+- API key chỉ tồn tại trong `chrome.storage.sync` — không bao giờ log ra console
 
 ---
 
-## Câu hỏi thường gặp
+## Troubleshooting
 
-<details>
-<summary><strong>Panel không hiện ra?</strong></summary>
-Nhấn <strong>F5</strong> tải lại trang, do SPA đôi khi Load chưa đồng bộ kịp. Hoặc tải lại extenion.
-</details>
+**Panel không hiện?**
+→ Nhấn F5. SPA đôi khi mount trước khi content script ready. Nếu vẫn không được: reload extension tại `chrome://extensions`.
 
-<details>
-<summary><strong>Gemini báo ERR?</strong></summary>
-Mã API Key bạn dán chưa đúng hoặc đã hết hạn (Quota exceeded). Vui lòng check Console (`F12`) để xem chi tiết mã lỗi từ Google.
-</details>
+**AI trả lời sai / lỗi?**
+→ Kiểm tra API key còn hạn. Mở DevTools (`F12`) → Console → tìm `[LMSX]` để xem log chi tiết.
 
-<details>
-<summary><strong>Tại sao dùng Shadow DOM?</strong></summary>
-Để cách ly hoàn toàn CSS của thẻ, nhằm đảm bảo không bị xung đột Style với các nút UI của hệ thống LMS OpenEdx. Cực kỳ ổn định.
-</details>
+**Video không tăng tốc?**
+→ Một số bài dùng iframe cross-origin. `all_frames: false` trong manifest — cân nhắc đổi sang `true` nếu cần.
+
+**`content.js` không tồn tại sau clone?**
+→ Chạy `node build.js` trước khi load unpacked.
 
 ---
 
 ## Lịch sử phiên bản
 
-| Phiên bản | Thay đổi                                                                                                                    |
-| --------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **v3.6**  | Modular architecture (Tách src), Gemini AI integration, ShadowDOM Encapsulation, Stealth Copy, Remove Mako Templates limit. |
-| **v1.0**  | Bản nguyên thể: x4 Speed, Chế độ cũ (Watch/Run/Auto)                                                                        |
+| Version | Highlights |
+|---|---|
+| **v3.6** | Modular src/, OpenRouter + Groq dual provider, Shadow DOM panel, AES-GCM vault, Stealth bypass |
+| **v1.0** | Monolithic script, x4 speed, Gemini only |
 
 ---
 
 ## Lưu ý
 
-> Dự án cho mục đích cá nhân và tối ưu hóa thời gian học tập.
+> Dự án phục vụ mục đích cá nhân — tối ưu hoá thời gian học tập.
 
-- Không phân phối lại dưới mục đích thương mại.
-- Công cụ sử dụng kiến thức AI Machine Learning để trợ giúp kỹ năng giải toán, tác giả không chịu trách nhiệm trong việc hệ thống ghi nhận.
-- Mọi dữ liệu Storage khóa AES mã hóa ở Background cục bộ.
+- Không phân phối lại dưới hình thức thương mại.
+- Tác giả không chịu trách nhiệm nếu hệ thống LMS ghi nhận hành vi bất thường.
+- Toàn bộ dữ liệu nhạy cảm được mã hoá cục bộ, không gửi về server của tác giả.
 
 ---
 
 <div align="center">
 
-Made with ♥ · PGH · Manifest V3
+Made with ♥ by **PGH** · PTIT · Manifest V3
 
 </div>
-
-# LMSx
