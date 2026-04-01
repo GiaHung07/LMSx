@@ -184,18 +184,6 @@ Video/Quiz hoàn tất
 
 ---
 
-## Những thay đổi gần đây
-
-- Đổi tên hiển thị từ `LMSX` sang `LMSx`
-- Bỏ OpenRouter, chỉ giữ Groq
-- Sửa lỗi nhảy sai chapter khi tự chuyển bài
-- Sửa lỗi lặp video và không tự chuyển bài sau khi video xong
-- Sửa logic `Auto` để chỉ điều khiển automation
-- Tắt log console mặc định, chỉ giữ log khi thật sự cần debug
-- Cập nhật icon extension bằng ảnh mới trong `image.png`
-
----
-
 ## Troubleshooting
 
 **Panel không hiện?**  
