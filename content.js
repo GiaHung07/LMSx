@@ -1,7 +1,7 @@
 // content.js - LMSX build
 (function () {
     'use strict';
-    const __LMSX_BUILD_STAMP__ = "2026-04-01T08:46:38.857Z";
+    const __LMSX_BUILD_STAMP__ = "2026-04-01T14:43:12.964Z";
 
     // -- main.js --
     const LMSX_VERSION = '3.6';
@@ -158,7 +158,7 @@
             },
             automation: {
                 videoSpeed: 4,
-                autoSubmitQuiz: true,
+                autoSubmit: true,
                 autoNextLesson: true,
                 maxQuizRetries: RUNNER_MAX_RETRIES,
                 pauseWhenHidden: false,
@@ -276,7 +276,7 @@
             },
             automation: {
                 videoSpeed: clamp(Number(value.automation?.videoSpeed) || defaults.automation.videoSpeed, 1, 16),
-                autoSubmitQuiz: value.automation?.autoSubmitQuiz !== false,
+                autoSubmit: true,
                 autoNextLesson: value.automation?.autoNextLesson !== false,
                 maxQuizRetries: clamp(Number(value.automation?.maxQuizRetries) || defaults.automation.maxQuizRetries, 1, 6),
                 pauseWhenHidden: value.automation?.pauseWhenHidden === true,
@@ -436,8 +436,6 @@
             importedAt: Number(input.importedAt) || nowTs(),
         };
     }
-
-
 
 
 
@@ -632,11 +630,13 @@
                 S.runtime.logs = S.runtime.logs.slice(-maxEntries);
             }
 
-            const prefix = `[LMSX][${module}] ${event}`;
-            const message = entry.detail ? `${prefix} ${entry.detail}` : prefix;
-            const sink = level === 'error' ? console.error : level === 'warn' ? console.warn : level === 'debug' ? console.debug : console.log;
-            if (payload !== undefined) sink(message, payload);
-            else sink(message);
+            if (verboseLogs || level === 'error') {
+                const prefix = `[LMSX][${module}] ${event}`;
+                const message = entry.detail ? `${prefix} ${entry.detail}` : prefix;
+                const sink = level === 'error' ? console.error : level === 'warn' ? console.warn : level === 'debug' ? console.debug : console.log;
+                if (payload !== undefined) sink(message, payload);
+                else sink(message);
+            }
 
             S.ui?.pushLog?.(entry);
             return entry;
@@ -756,6 +756,8 @@
         quizSubmit: [
             'button[type="submit"]',
             'button[data-testid*="submit"]',
+            'button[class*="SubmitButton"]',
+            '[class*="QuizFooter"] button',
             '.submit.btn-brand',
             '.submit.button',
             '.check',
@@ -1042,7 +1044,6 @@
         CAPABILITY_CACHE.at = nowTs();
         return CAPABILITY_CACHE.value;
     }
-
 
 
     // -- network/providers.js --
@@ -1743,6 +1744,7 @@
     .titlebar:active{cursor:grabbing}
     .dots{display:flex;gap:6px}
     .dot{width:11px;height:11px;border-radius:50%;cursor:pointer;flex-shrink:0;transition:filter .15s,opacity .15s;position:relative}
+    .dot::before{content:'';position:absolute;top:-5px;bottom:-5px;left:-3px;right:-3px;border-radius:50%}
     .dot:hover{filter:brightness(1.35)}
     .dot.r{background:#FF5F57}
     .dot.y{background:#FEBC2E}
@@ -1755,7 +1757,7 @@
     .dot.g:hover::after{content:'▶';font-size:6px;color:rgba(0,0,0,.6);opacity:1}
 
     .ptitle{flex:1;text-align:center;font-size:11.5px;font-weight:500;color:rgba(255,255,255,.34);letter-spacing:.09em}
-    .gear-btn{background:none;border:none;cursor:pointer;padding:2px;display:flex;align-items:center;color:rgba(255,255,255,.28);transition:color .15s}
+    .gear-btn{background:none;border:none;cursor:pointer;padding:8px;margin:-6px;display:flex;align-items:center;color:rgba(255,255,255,.28);transition:color .15s}
     .gear-btn:hover{color:rgba(255,255,255,.65)}
 
     .collapsible{transition:max-height .35s cubic-bezier(.4,0,.2,1),opacity .3s;overflow:hidden}
@@ -1845,9 +1847,9 @@
             </div>
             <div class="ptitle">LMSX</div>
             <button class="gear-btn" id="flipBtn" title="Cài đặt">
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                <path d="M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" stroke="currentColor" stroke-width="1.2"/>
-                <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M3.05 12.95l1.06-1.06M11.89 4.11l1.06-1.06" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
               </svg>
             </button>
           </div>
@@ -2041,10 +2043,14 @@
 
         function startDragging(event) {
             if (event.target.closest('.dots') || event.target.closest('button') || event.target.closest('a') || event.target.closest('input')) return;
+            
+            const rect = event.currentTarget.getBoundingClientRect();
+            const offsetX = event.clientX - rect.left;
+            if (offsetX < 65 || offsetX > rect.width - 45) return;
+
             event.preventDefault();
             dragging = true;
             panel.classList.add('is-dragging');
-            const rect = panel.getBoundingClientRect();
             sl = rect.left;
             st = rect.top;
             sx = event.clientX;
@@ -2362,12 +2368,7 @@
         });
 
         $('dotG')?.addEventListener('click', () => { toggleRun(); });
-        ids.toggle?.addEventListener('click', async () => {
-            const nextAuto = !(S.settings.automation.autoSubmitQuiz !== false);
-            S.settings.automation.autoSubmitQuiz = nextAuto;
-            await S.storage.saveSettings(S.settings);
-            ids.toggle.classList.toggle('on', nextAuto);
-        });
+        ids.toggle?.addEventListener('click', () => { toggleRun(); });
 
         $('flipBtn')?.addEventListener('click', () => ids.card?.classList.add('flipped'));
         $('backBtn')?.addEventListener('click', () => ids.card?.classList.remove('flipped'));
@@ -2392,7 +2393,7 @@
         function sync() {
             if (!S.settings || !S.runtime || !S.uiPrefs) return;
             applyPanelPrefs();
-            if (ids.toggle) ids.toggle.classList.toggle('on', S.settings.automation.autoSubmitQuiz !== false);
+            if (ids.toggle) ids.toggle.classList.toggle('on', S.runtime.active && S.runtime.state !== 'paused');
             syncStatus();
         }
 
@@ -2421,7 +2422,6 @@
     }
 
 
-
     // -- automation/video.js --
     class VideoCtrl {
         constructor() {
@@ -2442,11 +2442,17 @@
             return this.video;
         }
 
-        async autoPlay() {
+        async autoPlay(requestedSpeed = 4) {
             const video = this.attach(detectVideoCapability());
             if (!video) return false;
-            const speed = 4;
+            const speed = requestedSpeed;
             
+            if (this.timer) {
+                if (video.paused) video.play().catch(()=>{});
+                if (video.playbackRate !== speed) video.playbackRate = speed;
+                return true;
+            }
+
             try {
                 await video.play();
             } catch (error) {
@@ -2814,9 +2820,13 @@
         const caps = detectPageCapabilities(true);
         const capabilityNode = caps.quizSubmit?.matched ? caps.quizSubmit.node : null;
         const submitNode = capabilityNode || findQuizSubmitNodeFallback();
-        if (!submitNode) return { submitted: false, reason: 'submit-not-found' };
+        if (!submitNode) {
+            S.logger?.warn('quiz', 'submit:missing', 'Khong tim thay nut nop bai');
+            return { submitted: false, reason: 'submit-not-found' };
+        }
         submitNode.scrollIntoView({ block: 'center', behavior: 'smooth' });
         await sleep(250);
+        S.logger?.info('quiz', 'submit:click', `Dang bam nut nop: ${normalizeText(submitNode.textContent || submitNode.getAttribute('aria-label') || 'submit')}`);
         submitNode.click();
         return { submitted: true, reason: 'clicked-submit' };
     }
@@ -3021,7 +3031,7 @@
             return { ok: false, waitingUser: true, reason: 'no-answer-applied' };
         }
 
-        if (!S.settings.automation.autoSubmitQuiz) {
+        if (!S.settings.automation.autoSubmit) {
             setState('waiting-user', { capability: 'quiz', detail: 'Đã điền đáp án, chờ người dùng nộp bài' });
             return { ok: true, applied, waitingUser: true, reason: 'submit-disabled' };
         }
@@ -3167,7 +3177,6 @@
     }
 
 
-
     // -- automation/navigator.js --
     function updateProgress(force = false) {
         const progress = detectProgressSnapshot();
@@ -3231,52 +3240,166 @@
         return false;
     }
 
+    function isRenderableLessonNode(node) {
+        if (!(node instanceof HTMLElement)) return false;
+        if (!node.isConnected) return false;
+        if (node.closest('#__lmsx_root__')) return false;
+        const styles = getComputedStyle(node);
+        if (styles.display === 'none' || styles.visibility === 'hidden') return false;
+        const rect = node.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+    }
+
     function collectLessonCandidates() {
         const raw = [
             ...document.querySelectorAll('[class*="Lesson-sc-"], [class*="lesson-item"], [class*="LessonItem"], [data-testid*="lesson"]'),
-        ].filter(node => node instanceof HTMLElement);
+        ].filter(node => node instanceof HTMLElement)
+            .filter(isRenderableLessonNode);
         const leafNodes = raw.filter(node => !raw.some(parent => parent !== node && parent.contains(node)));
-        return leafNodes
+        const items = leafNodes
             .map(node => {
                 const clickable = node.querySelector('a[href], button, [role="button"]') || node;
                 const text = normalizeText((clickable.textContent || node.textContent || '')).slice(0, 180);
-                return { node, clickable, text };
+                return {
+                    node,
+                    clickable,
+                    text,
+                    disabled: isLikelyDisabledLesson(node),
+                    chapterEl: node.closest('.ant-collapse-item'),
+                };
             })
             .filter(item => item.text.length >= 4)
-            .filter(item => !isLikelyDisabledLesson(item.node) && !isLikelyDisabledLesson(item.clickable));
+            .filter(item => isRenderableLessonNode(item.clickable));
+
+        // De-duplicate: LMS renders 2 identical sidebars, keep only first occurrence of each lesson text
+        const seen = new Set();
+        return items.filter(item => {
+            if (seen.has(item.text)) return false;
+            seen.add(item.text);
+            return true;
+        });
     }
 
-    function isCurrentLessonCandidate(item) {
+    function getCurrentLessonScore(item) {
         const node = item?.node;
         const clickable = item?.clickable;
-        if (!(node instanceof HTMLElement) || !(clickable instanceof HTMLElement)) return false;
-        if (clickable.getAttribute('aria-current') === 'true' || clickable.getAttribute('aria-current') === 'page') return true;
+        if (!(node instanceof HTMLElement) || !(clickable instanceof HTMLElement)) return 0;
+        let score = 0;
+
+        if (clickable.getAttribute('aria-current') === 'true' || clickable.getAttribute('aria-current') === 'page') {
+            score = Math.max(score, 6);
+        }
+
         const classText = `${node.className || ''} ${clickable.className || ''}`.toLowerCase();
-        if (/(active|current|selected)/.test(classText)) return true;
+        if (/(active|current|selected)/.test(classText)) {
+            score = Math.max(score, 5);
+        }
+
         if (clickable instanceof HTMLAnchorElement) {
             try {
                 const href = new URL(clickable.href, location.href);
-                if (href.pathname === location.pathname && href.search === location.search) return true;
+                if (href.pathname === location.pathname && href.search === location.search) {
+                    score = Math.max(score, 7);
+                }
             } catch {}
         }
+
+        // Styled-component detection: Current lesson has non-transparent background + dark blue left border
+        // This is the most reliable hook for this LMS (no semantic class names or aria attributes)
+        try {
+            const styles = getComputedStyle(node);
+            const bg = styles.backgroundColor;
+            const borderL = styles.borderLeftColor;
+            const borderLW = Number.parseFloat(styles.borderLeftWidth || '0');
+            const isTransparent = v => !v || v === 'rgba(0, 0, 0, 0)' || v === 'transparent';
+            if (!isTransparent(bg) && !isTransparent(borderL) && borderLW >= 2) {
+                score = Math.max(score, 4);
+            }
+        } catch {}
+
+        return score;
+    }
+
+    function findCurrentLessonIndex(candidates) {
+        const scored = candidates
+            .map((item, index) => ({ index, item, score: getCurrentLessonScore(item) }))
+            .filter(entry => entry.score > 0);
+
+        if (!scored.length) return -1;
+
+        scored.sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            return a.index - b.index;
+        });
+
+        const best = scored[0];
+        S.logger?.info('navigator', 'pick:current', `score=${best.score}, text="${best.item.text.slice(0, 60)}"`);
+        return best.index;
+    }
+
+    function pickNextLessonCandidate() {
+        const candidates = collectLessonCandidates();
+        if (!candidates.length) {
+            S.logger?.info('navigator', 'pick:empty', 'No lesson candidates found in sidebar');
+            return { candidate: null, candidates, currentIndex: -1 };
+        }
+        const currentIndex = findCurrentLessonIndex(candidates);
+        S.logger?.info('navigator', 'pick:index', `currentIndex=${currentIndex}, total=${candidates.length}, current="${candidates[currentIndex]?.text?.slice(0, 50) || 'N/A'}"`);
+
+        if (currentIndex >= 0 && currentIndex < candidates.length - 1) {
+            const next = candidates[currentIndex + 1];
+            if (next.disabled) {
+                S.logger?.warn('navigator', 'pick:blocked', `Adjacent lesson looks locked: "${next.text.slice(0, 60)}"`);
+                return { candidate: null, candidates, currentIndex };
+            }
+            S.logger?.info('navigator', 'pick:next', `Next lesson: "${next.text.slice(0, 60)}"`);
+            return { candidate: next, candidates, currentIndex };
+        }
+        if (currentIndex === candidates.length - 1) {
+            S.logger?.info('navigator', 'pick:last', 'Current is last candidate in list');
+            return { candidate: null, candidates, currentIndex };
+        }
+        S.logger?.warn('navigator', 'pick:unknown-current', 'Khong xac dinh duoc bai hien tai, bo qua sidebar navigation');
+        return { candidate: null, candidates, currentIndex };
+    }
+
+    async function openNextChapterAfterCurrent(candidates, currentIndex) {
+        const currentChapter = candidates[currentIndex]?.chapterEl;
+        if (!(currentChapter instanceof HTMLElement)) return false;
+
+        const chapters = [...document.querySelectorAll('.ant-collapse-item')].filter(node => node instanceof HTMLElement);
+        const chapterIndex = chapters.indexOf(currentChapter);
+        if (chapterIndex < 0) return false;
+
+        for (let i = chapterIndex + 1; i < chapters.length; i++) {
+            const nextChapter = chapters[i];
+            const header = nextChapter.querySelector('.ant-collapse-header');
+            if (!(header instanceof HTMLElement)) continue;
+            header.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            await sleep(260);
+            header.click();
+            S.logger?.info('navigator', 'chapter:next', `Opened next chapter index=${i}`);
+            await sleep(420);
+            return true;
+        }
+
         return false;
     }
 
-    function pickNextUnlockedLessonCandidate() {
-        const candidates = collectLessonCandidates();
-        if (!candidates.length) return null;
-        const currentIndex = candidates.findIndex(isCurrentLessonCandidate);
-        if (currentIndex >= 0 && currentIndex < candidates.length - 1) {
-            return candidates[currentIndex + 1];
-        }
-        if (currentIndex === candidates.length - 1) return null;
-        return candidates[candidates.length - 1];
-    }
-
     async function navigateNext(reason = 'next') {
-        const lessonCandidate = pickNextUnlockedLessonCandidate();
+        let pick = pickNextLessonCandidate();
+        let lessonCandidate = pick.candidate;
+
+        if (!lessonCandidate && pick.currentIndex >= 0 && pick.currentIndex === pick.candidates.length - 1) {
+            const openedNextChapter = await openNextChapterAfterCurrent(pick.candidates, pick.currentIndex);
+            if (openedNextChapter) {
+                pick = pickNextLessonCandidate();
+                lessonCandidate = pick.candidate;
+            }
+        }
+
         if (lessonCandidate?.clickable) {
-            setState('ready', { capability: 'navigation', detail: 'Đang mở bài tiếp theo trong danh sách' });
+            setState('ready', { capability: 'navigation', detail: `Đang mở bài tiếp theo: ${lessonCandidate.text.slice(0, 50)}` });
             lessonCandidate.clickable.scrollIntoView({ block: 'center', behavior: 'smooth' });
             await sleep(240 + Math.floor(Math.random() * 120));
             lessonCandidate.clickable.click();
@@ -3288,7 +3411,7 @@
 
         const caps = detectPageCapabilities(true);
         if (!caps.nextButton?.matched) {
-            setState('completed', { capability: 'navigation', detail: 'Không còn nút bài tiếp theo' });
+            setState('completed', { capability: 'navigation', detail: 'Không còn bài tiếp theo (hết bài mở khóa hoặc đã hoàn thành)' });
             return false;
         }
         setState('ready', { capability: 'navigation', detail: 'Đang chuyển bài tiếp theo' });
@@ -3369,6 +3492,13 @@
                 return;
             }
 
+            if (S.runtime.state === 'running-video' && S.videoCtrl?.timer && reason === 'dom-mutation') {
+                const vid = S.videoCtrl.video;
+                if (vid && document.contains(vid) && !vid.paused) {
+                    return;
+                }
+            }
+
             setState('detecting-page', { capability: 'idle', detail: `Scan từ ${reason}` });
             const caps = detectPageCapabilities(true);
             S.runtime.capabilities = serializeCapabilities(caps);
@@ -3378,6 +3508,20 @@
             persistRuntimeSoon();
 
             const jitter = () => Math.floor(Math.random() * 200) - 100;
+            
+            // Navigate sau video/quiz phải check TRƯỚC các xử lý chức năng để tránh kẹt trạng thái
+            if (S.settings.automation.autoNextLesson && /^(video-complete|quiz-verified|quiz-await-network)$/.test(reason)) {
+                const lastNav = S.runtime._lastAutoNavigate || 0;
+                if (nowTs() - lastNav < 3000) {
+                    setState('ready', { capability: caps.currentCapability, detail: 'Chờ trước khi chuyển bài' });
+                    scheduleRun(reason, 120);
+                    return;
+                }
+                S.runtime._lastAutoNavigate = nowTs();
+                S.runtime.quiz.awaitingNetwork = false;
+                await navigateNext(reason);
+                return;
+            }
             if (caps.quizStart?.matched) {
                 setState('running-quiz', { capability: 'quiz-start', detail: 'Bắt đầu quiz' });
                 caps.quizStart.node.click();
@@ -3397,28 +3541,38 @@
                 return;
             }
 
+            // Moved autoNextLesson up to execute first
+
             if (caps.video?.matched) {
-                setState('running-video', { capability: 'video', detail: 'Đang điều khiển video' });
-                await ensureVideoPlayback();
-                return;
+                const vid = caps.video.node;
+                const isFinished = (S.videoCtrl && S.videoCtrl._ended && S.videoCtrl.video === vid) || 
+                                   vid.ended || 
+                                   (vid.duration && (vid.currentTime / vid.duration >= 0.98 || vid.duration - vid.currentTime <= 1));
+
+                if (!isFinished) {
+                    setState('running-video', { capability: 'video', detail: 'Đang điều khiển video' });
+                    await ensureVideoPlayback();
+                    return;
+                } else if (S.videoCtrl && S.videoCtrl.video === vid && !S.videoCtrl._ended) {
+                    S.videoCtrl.finish('threshold-detected');
+                }
             }
 
-            if (S.settings.automation.autoNextLesson && /^video-complete|quiz-verified|quiz-await-network/.test(reason)) {
-                // Anti-loop: chỉ navigate 1 lần mỗi 3 giây
+            // No video/quiz/quizStart found on this page - try auto-navigate to next lesson
+            if (S.settings.automation.autoNextLesson) {
                 const lastNav = S.runtime._lastAutoNavigate || 0;
-                if (nowTs() - lastNav < 3000) {
-                    setState('ready', { capability: caps.currentCapability, detail: 'Chờ trước khi chuyển bài' });
-                    scheduleRun(reason, 120);
+                if (nowTs() - lastNav >= 3000) {
+                    S.runtime._lastAutoNavigate = nowTs();
+                    S.logger?.info('navigator', 'idle-navigate', `No actionable content on page, attempting navigation (reason: ${reason})`);
+                    const navigated = await navigateNext('idle-auto');
+                    if (navigated) return;
+                    // navigateNext already set 'completed' state if nothing found
                     return;
                 }
-                S.runtime._lastAutoNavigate = nowTs();
-                // Clear awaiting flag để tránh kẹt state
-                S.runtime.quiz.awaitingNetwork = false;
-                await navigateNext(reason);
-                return;
             }
 
             setState('ready', { capability: caps.currentCapability, detail: 'Không có tác vụ tự động phù hợp trên trang này' });
+            if (S.runtime.active) scheduleRun('idle-poll', 3500);
         } catch (error) {
             updateStats({ errors: S.stats.errors + 1 });
             S.logger?.error('runner', 'cycle:failed', error.message, { reason });
@@ -3488,7 +3642,13 @@
         addCleanup(() => window.removeEventListener('hashchange', hashHandler));
         addCleanup(() => document.removeEventListener('visibilitychange', visibilityHandler));
 
-        const observer = registerObserver(new MutationObserver(() => {
+        const observer = registerObserver(new MutationObserver((mutations) => {
+            const isSelf = mutations.every(m => {
+                const el = m.target.nodeType === 1 ? m.target : m.target.parentElement;
+                return el && el.closest && el.closest('#__lmsx_root__');
+            });
+            if (isSelf) return;
+
             clearManagedTimeout(S.runtime._domInvalidateTimer);
             S.runtime._domInvalidateTimer = setManagedTimeout(() => invalidateCapabilityCache('dom-mutation'), 250);
         }));
@@ -3535,10 +3695,6 @@
             S.stats = store.stats;
             S.uiPrefs = store.uiPrefs;
             S.cache = store.cache;
-            if (S.settings.featureFlags.verboseLogs !== true) {
-                S.settings.featureFlags.verboseLogs = true;
-                await S.storage.saveSettings(S.settings);
-            }
             S.runtime.mode = S.settings.featureFlags.compatBypass ? 'compat' : 'safe';
             S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys[S.settings.ai.provider] || '');
 

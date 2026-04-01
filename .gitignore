@@ -48,8 +48,8 @@ copilot-messages.log
 .DS_Store
 .project/attachments/files/**
 
-# Skills and agent folders (not for git)
-.agents/
-.claude/
-.windsurf/
+# Local workspace artifacts
+.vscode/
+backup.json
+files/
 everything/

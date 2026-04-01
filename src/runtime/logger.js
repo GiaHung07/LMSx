@@ -22,11 +22,13 @@ function createLogger() {
             S.runtime.logs = S.runtime.logs.slice(-maxEntries);
         }
 
-        const prefix = `[LMSX][${module}] ${event}`;
-        const message = entry.detail ? `${prefix} ${entry.detail}` : prefix;
-        const sink = level === 'error' ? console.error : level === 'warn' ? console.warn : level === 'debug' ? console.debug : console.log;
-        if (payload !== undefined) sink(message, payload);
-        else sink(message);
+        if (verboseLogs || level === 'error') {
+            const prefix = `[LMSX][${module}] ${event}`;
+            const message = entry.detail ? `${prefix} ${entry.detail}` : prefix;
+            const sink = level === 'error' ? console.error : level === 'warn' ? console.warn : level === 'debug' ? console.debug : console.log;
+            if (payload !== undefined) sink(message, payload);
+            else sink(message);
+        }
 
         S.ui?.pushLog?.(entry);
         return entry;

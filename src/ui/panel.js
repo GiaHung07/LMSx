@@ -85,10 +85,14 @@ function initPanel(root) {
 
     function startDragging(event) {
         if (event.target.closest('.dots') || event.target.closest('button') || event.target.closest('a') || event.target.closest('input')) return;
+        
+        const rect = event.currentTarget.getBoundingClientRect();
+        const offsetX = event.clientX - rect.left;
+        if (offsetX < 65 || offsetX > rect.width - 45) return;
+
         event.preventDefault();
         dragging = true;
         panel.classList.add('is-dragging');
-        const rect = panel.getBoundingClientRect();
         sl = rect.left;
         st = rect.top;
         sx = event.clientX;
@@ -406,12 +410,7 @@ function initPanel(root) {
     });
 
     $('dotG')?.addEventListener('click', () => { toggleRun(); });
-    ids.toggle?.addEventListener('click', async () => {
-        const nextAuto = !(S.settings.automation.autoSubmitQuiz !== false);
-        S.settings.automation.autoSubmitQuiz = nextAuto;
-        await S.storage.saveSettings(S.settings);
-        ids.toggle.classList.toggle('on', nextAuto);
-    });
+    ids.toggle?.addEventListener('click', () => { toggleRun(); });
 
     $('flipBtn')?.addEventListener('click', () => ids.card?.classList.add('flipped'));
     $('backBtn')?.addEventListener('click', () => ids.card?.classList.remove('flipped'));
@@ -436,7 +435,7 @@ function initPanel(root) {
     function sync() {
         if (!S.settings || !S.runtime || !S.uiPrefs) return;
         applyPanelPrefs();
-        if (ids.toggle) ids.toggle.classList.toggle('on', S.settings.automation.autoSubmitQuiz !== false);
+        if (ids.toggle) ids.toggle.classList.toggle('on', S.runtime.active && S.runtime.state !== 'paused');
         syncStatus();
     }
 
@@ -463,4 +462,3 @@ function initPanel(root) {
         panel.remove();
     });
 }
-

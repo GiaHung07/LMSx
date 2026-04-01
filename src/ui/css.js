@@ -21,6 +21,7 @@ button,input,select{font:inherit}
 .titlebar:active{cursor:grabbing}
 .dots{display:flex;gap:6px}
 .dot{width:11px;height:11px;border-radius:50%;cursor:pointer;flex-shrink:0;transition:filter .15s,opacity .15s;position:relative}
+.dot::before{content:'';position:absolute;top:-5px;bottom:-5px;left:-3px;right:-3px;border-radius:50%}
 .dot:hover{filter:brightness(1.35)}
 .dot.r{background:#FF5F57}
 .dot.y{background:#FEBC2E}
@@ -33,7 +34,7 @@ button,input,select{font:inherit}
 .dot.g:hover::after{content:'▶';font-size:6px;color:rgba(0,0,0,.6);opacity:1}
 
 .ptitle{flex:1;text-align:center;font-size:11.5px;font-weight:500;color:rgba(255,255,255,.34);letter-spacing:.09em}
-.gear-btn{background:none;border:none;cursor:pointer;padding:2px;display:flex;align-items:center;color:rgba(255,255,255,.28);transition:color .15s}
+.gear-btn{background:none;border:none;cursor:pointer;padding:8px;margin:-6px;display:flex;align-items:center;color:rgba(255,255,255,.28);transition:color .15s}
 .gear-btn:hover{color:rgba(255,255,255,.65)}
 
 .collapsible{transition:max-height .35s cubic-bezier(.4,0,.2,1),opacity .3s;overflow:hidden}

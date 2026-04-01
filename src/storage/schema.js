@@ -28,7 +28,7 @@ function createDefaultSettings() {
         },
         automation: {
             videoSpeed: 4,
-            autoSubmitQuiz: true,
+            autoSubmit: true,
             autoNextLesson: true,
             maxQuizRetries: RUNNER_MAX_RETRIES,
             pauseWhenHidden: false,
@@ -146,7 +146,7 @@ function normalizeSettings(input) {
         },
         automation: {
             videoSpeed: clamp(Number(value.automation?.videoSpeed) || defaults.automation.videoSpeed, 1, 16),
-            autoSubmitQuiz: value.automation?.autoSubmitQuiz !== false,
+            autoSubmit: true,
             autoNextLesson: value.automation?.autoNextLesson !== false,
             maxQuizRetries: clamp(Number(value.automation?.maxQuizRetries) || defaults.automation.maxQuizRetries, 1, 6),
             pauseWhenHidden: value.automation?.pauseWhenHidden === true,
@@ -306,8 +306,6 @@ function normalizeAnswerSet(input) {
         importedAt: Number(input.importedAt) || nowTs(),
     };
 }
-
-
 
 
 

@@ -24,7 +24,7 @@
         if (!token || typeof token !== 'string') return token;
         if (CACHE[token]) return CACHE[token];
         COUNTER.value++;
-        CACHE[token] = 'lms-' + cyrb53(token + SEED + COUNTER.value);
+        CACHE[token] = 'css-' + cyrb53(token + SEED + COUNTER.value);
         return CACHE[token];
     };
 

@@ -13,10 +13,6 @@ async function init() {
         S.stats = store.stats;
         S.uiPrefs = store.uiPrefs;
         S.cache = store.cache;
-        if (S.settings.featureFlags.verboseLogs !== true) {
-            S.settings.featureFlags.verboseLogs = true;
-            await S.storage.saveSettings(S.settings);
-        }
         S.runtime.mode = S.settings.featureFlags.compatBypass ? 'compat' : 'safe';
         S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys[S.settings.ai.provider] || '');
 

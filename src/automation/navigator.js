@@ -60,52 +60,166 @@ function isLikelyDisabledLesson(node) {
     return false;
 }
 
+function isRenderableLessonNode(node) {
+    if (!(node instanceof HTMLElement)) return false;
+    if (!node.isConnected) return false;
+    if (node.closest('#__lmsx_root__')) return false;
+    const styles = getComputedStyle(node);
+    if (styles.display === 'none' || styles.visibility === 'hidden') return false;
+    const rect = node.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+}
+
 function collectLessonCandidates() {
     const raw = [
         ...document.querySelectorAll('[class*="Lesson-sc-"], [class*="lesson-item"], [class*="LessonItem"], [data-testid*="lesson"]'),
-    ].filter(node => node instanceof HTMLElement);
+    ].filter(node => node instanceof HTMLElement)
+        .filter(isRenderableLessonNode);
     const leafNodes = raw.filter(node => !raw.some(parent => parent !== node && parent.contains(node)));
-    return leafNodes
+    const items = leafNodes
         .map(node => {
             const clickable = node.querySelector('a[href], button, [role="button"]') || node;
             const text = normalizeText((clickable.textContent || node.textContent || '')).slice(0, 180);
-            return { node, clickable, text };
+            return {
+                node,
+                clickable,
+                text,
+                disabled: isLikelyDisabledLesson(node),
+                chapterEl: node.closest('.ant-collapse-item'),
+            };
         })
         .filter(item => item.text.length >= 4)
-        .filter(item => !isLikelyDisabledLesson(item.node) && !isLikelyDisabledLesson(item.clickable));
+        .filter(item => isRenderableLessonNode(item.clickable));
+
+    // De-duplicate: LMS renders 2 identical sidebars, keep only first occurrence of each lesson text
+    const seen = new Set();
+    return items.filter(item => {
+        if (seen.has(item.text)) return false;
+        seen.add(item.text);
+        return true;
+    });
 }
 
-function isCurrentLessonCandidate(item) {
+function getCurrentLessonScore(item) {
     const node = item?.node;
     const clickable = item?.clickable;
-    if (!(node instanceof HTMLElement) || !(clickable instanceof HTMLElement)) return false;
-    if (clickable.getAttribute('aria-current') === 'true' || clickable.getAttribute('aria-current') === 'page') return true;
+    if (!(node instanceof HTMLElement) || !(clickable instanceof HTMLElement)) return 0;
+    let score = 0;
+
+    if (clickable.getAttribute('aria-current') === 'true' || clickable.getAttribute('aria-current') === 'page') {
+        score = Math.max(score, 6);
+    }
+
     const classText = `${node.className || ''} ${clickable.className || ''}`.toLowerCase();
-    if (/(active|current|selected)/.test(classText)) return true;
+    if (/(active|current|selected)/.test(classText)) {
+        score = Math.max(score, 5);
+    }
+
     if (clickable instanceof HTMLAnchorElement) {
         try {
             const href = new URL(clickable.href, location.href);
-            if (href.pathname === location.pathname && href.search === location.search) return true;
+            if (href.pathname === location.pathname && href.search === location.search) {
+                score = Math.max(score, 7);
+            }
         } catch {}
     }
+
+    // Styled-component detection: Current lesson has non-transparent background + dark blue left border
+    // This is the most reliable hook for this LMS (no semantic class names or aria attributes)
+    try {
+        const styles = getComputedStyle(node);
+        const bg = styles.backgroundColor;
+        const borderL = styles.borderLeftColor;
+        const borderLW = Number.parseFloat(styles.borderLeftWidth || '0');
+        const isTransparent = v => !v || v === 'rgba(0, 0, 0, 0)' || v === 'transparent';
+        if (!isTransparent(bg) && !isTransparent(borderL) && borderLW >= 2) {
+            score = Math.max(score, 4);
+        }
+    } catch {}
+
+    return score;
+}
+
+function findCurrentLessonIndex(candidates) {
+    const scored = candidates
+        .map((item, index) => ({ index, item, score: getCurrentLessonScore(item) }))
+        .filter(entry => entry.score > 0);
+
+    if (!scored.length) return -1;
+
+    scored.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.index - b.index;
+    });
+
+    const best = scored[0];
+    S.logger?.info('navigator', 'pick:current', `score=${best.score}, text="${best.item.text.slice(0, 60)}"`);
+    return best.index;
+}
+
+function pickNextLessonCandidate() {
+    const candidates = collectLessonCandidates();
+    if (!candidates.length) {
+        S.logger?.info('navigator', 'pick:empty', 'No lesson candidates found in sidebar');
+        return { candidate: null, candidates, currentIndex: -1 };
+    }
+    const currentIndex = findCurrentLessonIndex(candidates);
+    S.logger?.info('navigator', 'pick:index', `currentIndex=${currentIndex}, total=${candidates.length}, current="${candidates[currentIndex]?.text?.slice(0, 50) || 'N/A'}"`);
+
+    if (currentIndex >= 0 && currentIndex < candidates.length - 1) {
+        const next = candidates[currentIndex + 1];
+        if (next.disabled) {
+            S.logger?.warn('navigator', 'pick:blocked', `Adjacent lesson looks locked: "${next.text.slice(0, 60)}"`);
+            return { candidate: null, candidates, currentIndex };
+        }
+        S.logger?.info('navigator', 'pick:next', `Next lesson: "${next.text.slice(0, 60)}"`);
+        return { candidate: next, candidates, currentIndex };
+    }
+    if (currentIndex === candidates.length - 1) {
+        S.logger?.info('navigator', 'pick:last', 'Current is last candidate in list');
+        return { candidate: null, candidates, currentIndex };
+    }
+    S.logger?.warn('navigator', 'pick:unknown-current', 'Khong xac dinh duoc bai hien tai, bo qua sidebar navigation');
+    return { candidate: null, candidates, currentIndex };
+}
+
+async function openNextChapterAfterCurrent(candidates, currentIndex) {
+    const currentChapter = candidates[currentIndex]?.chapterEl;
+    if (!(currentChapter instanceof HTMLElement)) return false;
+
+    const chapters = [...document.querySelectorAll('.ant-collapse-item')].filter(node => node instanceof HTMLElement);
+    const chapterIndex = chapters.indexOf(currentChapter);
+    if (chapterIndex < 0) return false;
+
+    for (let i = chapterIndex + 1; i < chapters.length; i++) {
+        const nextChapter = chapters[i];
+        const header = nextChapter.querySelector('.ant-collapse-header');
+        if (!(header instanceof HTMLElement)) continue;
+        header.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        await sleep(260);
+        header.click();
+        S.logger?.info('navigator', 'chapter:next', `Opened next chapter index=${i}`);
+        await sleep(420);
+        return true;
+    }
+
     return false;
 }
 
-function pickNextUnlockedLessonCandidate() {
-    const candidates = collectLessonCandidates();
-    if (!candidates.length) return null;
-    const currentIndex = candidates.findIndex(isCurrentLessonCandidate);
-    if (currentIndex >= 0 && currentIndex < candidates.length - 1) {
-        return candidates[currentIndex + 1];
-    }
-    if (currentIndex === candidates.length - 1) return null;
-    return candidates[candidates.length - 1];
-}
-
 async function navigateNext(reason = 'next') {
-    const lessonCandidate = pickNextUnlockedLessonCandidate();
+    let pick = pickNextLessonCandidate();
+    let lessonCandidate = pick.candidate;
+
+    if (!lessonCandidate && pick.currentIndex >= 0 && pick.currentIndex === pick.candidates.length - 1) {
+        const openedNextChapter = await openNextChapterAfterCurrent(pick.candidates, pick.currentIndex);
+        if (openedNextChapter) {
+            pick = pickNextLessonCandidate();
+            lessonCandidate = pick.candidate;
+        }
+    }
+
     if (lessonCandidate?.clickable) {
-        setState('ready', { capability: 'navigation', detail: 'Đang mở bài tiếp theo trong danh sách' });
+        setState('ready', { capability: 'navigation', detail: `Đang mở bài tiếp theo: ${lessonCandidate.text.slice(0, 50)}` });
         lessonCandidate.clickable.scrollIntoView({ block: 'center', behavior: 'smooth' });
         await sleep(240 + Math.floor(Math.random() * 120));
         lessonCandidate.clickable.click();
@@ -117,7 +231,7 @@ async function navigateNext(reason = 'next') {
 
     const caps = detectPageCapabilities(true);
     if (!caps.nextButton?.matched) {
-        setState('completed', { capability: 'navigation', detail: 'Không còn nút bài tiếp theo' });
+        setState('completed', { capability: 'navigation', detail: 'Không còn bài tiếp theo (hết bài mở khóa hoặc đã hoàn thành)' });
         return false;
     }
     setState('ready', { capability: 'navigation', detail: 'Đang chuyển bài tiếp theo' });
@@ -198,6 +312,13 @@ async function runAutomationCycle(reason = 'manual') {
             return;
         }
 
+        if (S.runtime.state === 'running-video' && S.videoCtrl?.timer && reason === 'dom-mutation') {
+            const vid = S.videoCtrl.video;
+            if (vid && document.contains(vid) && !vid.paused) {
+                return;
+            }
+        }
+
         setState('detecting-page', { capability: 'idle', detail: `Scan từ ${reason}` });
         const caps = detectPageCapabilities(true);
         S.runtime.capabilities = serializeCapabilities(caps);
@@ -207,6 +328,20 @@ async function runAutomationCycle(reason = 'manual') {
         persistRuntimeSoon();
 
         const jitter = () => Math.floor(Math.random() * 200) - 100;
+        
+        // Navigate sau video/quiz phải check TRƯỚC các xử lý chức năng để tránh kẹt trạng thái
+        if (S.settings.automation.autoNextLesson && /^(video-complete|quiz-verified|quiz-await-network)$/.test(reason)) {
+            const lastNav = S.runtime._lastAutoNavigate || 0;
+            if (nowTs() - lastNav < 3000) {
+                setState('ready', { capability: caps.currentCapability, detail: 'Chờ trước khi chuyển bài' });
+                scheduleRun(reason, 120);
+                return;
+            }
+            S.runtime._lastAutoNavigate = nowTs();
+            S.runtime.quiz.awaitingNetwork = false;
+            await navigateNext(reason);
+            return;
+        }
         if (caps.quizStart?.matched) {
             setState('running-quiz', { capability: 'quiz-start', detail: 'Bắt đầu quiz' });
             caps.quizStart.node.click();
@@ -226,28 +361,38 @@ async function runAutomationCycle(reason = 'manual') {
             return;
         }
 
+        // Moved autoNextLesson up to execute first
+
         if (caps.video?.matched) {
-            setState('running-video', { capability: 'video', detail: 'Đang điều khiển video' });
-            await ensureVideoPlayback();
-            return;
+            const vid = caps.video.node;
+            const isFinished = (S.videoCtrl && S.videoCtrl._ended && S.videoCtrl.video === vid) || 
+                               vid.ended || 
+                               (vid.duration && (vid.currentTime / vid.duration >= 0.98 || vid.duration - vid.currentTime <= 1));
+
+            if (!isFinished) {
+                setState('running-video', { capability: 'video', detail: 'Đang điều khiển video' });
+                await ensureVideoPlayback();
+                return;
+            } else if (S.videoCtrl && S.videoCtrl.video === vid && !S.videoCtrl._ended) {
+                S.videoCtrl.finish('threshold-detected');
+            }
         }
 
-        if (S.settings.automation.autoNextLesson && /^video-complete|quiz-verified|quiz-await-network/.test(reason)) {
-            // Anti-loop: chỉ navigate 1 lần mỗi 3 giây
+        // No video/quiz/quizStart found on this page - try auto-navigate to next lesson
+        if (S.settings.automation.autoNextLesson) {
             const lastNav = S.runtime._lastAutoNavigate || 0;
-            if (nowTs() - lastNav < 3000) {
-                setState('ready', { capability: caps.currentCapability, detail: 'Chờ trước khi chuyển bài' });
-                scheduleRun(reason, 120);
+            if (nowTs() - lastNav >= 3000) {
+                S.runtime._lastAutoNavigate = nowTs();
+                S.logger?.info('navigator', 'idle-navigate', `No actionable content on page, attempting navigation (reason: ${reason})`);
+                const navigated = await navigateNext('idle-auto');
+                if (navigated) return;
+                // navigateNext already set 'completed' state if nothing found
                 return;
             }
-            S.runtime._lastAutoNavigate = nowTs();
-            // Clear awaiting flag để tránh kẹt state
-            S.runtime.quiz.awaitingNetwork = false;
-            await navigateNext(reason);
-            return;
         }
 
         setState('ready', { capability: caps.currentCapability, detail: 'Không có tác vụ tự động phù hợp trên trang này' });
+        if (S.runtime.active) scheduleRun('idle-poll', 3500);
     } catch (error) {
         updateStats({ errors: S.stats.errors + 1 });
         S.logger?.error('runner', 'cycle:failed', error.message, { reason });
@@ -317,7 +462,13 @@ function installNavigationWatcher() {
     addCleanup(() => window.removeEventListener('hashchange', hashHandler));
     addCleanup(() => document.removeEventListener('visibilitychange', visibilityHandler));
 
-    const observer = registerObserver(new MutationObserver(() => {
+    const observer = registerObserver(new MutationObserver((mutations) => {
+        const isSelf = mutations.every(m => {
+            const el = m.target.nodeType === 1 ? m.target : m.target.parentElement;
+            return el && el.closest && el.closest('#__lmsx_root__');
+        });
+        if (isSelf) return;
+
         clearManagedTimeout(S.runtime._domInvalidateTimer);
         S.runtime._domInvalidateTimer = setManagedTimeout(() => invalidateCapabilityCache('dom-mutation'), 250);
     }));

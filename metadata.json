@@ -16,7 +16,7 @@
         "normalization": "NFC",
         "comments": [],
         "requiredExtensions": {
-            "codexEditor": "0.23.0"
+            "codexEditor": "0.24.0"
         },
         "validationCount": 1,
         "validationCountAudio": 1,

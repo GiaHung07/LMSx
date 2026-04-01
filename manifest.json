@@ -28,7 +28,6 @@
       "all_frames": false,
       "js": [
         "obfuscate.js",
-        "js/runtime/bridge.js",
         "content.js"
       ],
       "css": []

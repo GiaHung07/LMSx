@@ -263,9 +263,13 @@ async function submitQuizIfPossible() {
     const caps = detectPageCapabilities(true);
     const capabilityNode = caps.quizSubmit?.matched ? caps.quizSubmit.node : null;
     const submitNode = capabilityNode || findQuizSubmitNodeFallback();
-    if (!submitNode) return { submitted: false, reason: 'submit-not-found' };
+    if (!submitNode) {
+        S.logger?.warn('quiz', 'submit:missing', 'Khong tim thay nut nop bai');
+        return { submitted: false, reason: 'submit-not-found' };
+    }
     submitNode.scrollIntoView({ block: 'center', behavior: 'smooth' });
     await sleep(250);
+    S.logger?.info('quiz', 'submit:click', `Dang bam nut nop: ${normalizeText(submitNode.textContent || submitNode.getAttribute('aria-label') || 'submit')}`);
     submitNode.click();
     return { submitted: true, reason: 'clicked-submit' };
 }
@@ -470,7 +474,7 @@ async function solveQuiz() {
         return { ok: false, waitingUser: true, reason: 'no-answer-applied' };
     }
 
-    if (!S.settings.automation.autoSubmitQuiz) {
+    if (!S.settings.automation.autoSubmit) {
         setState('waiting-user', { capability: 'quiz', detail: 'Đã điền đáp án, chờ người dùng nộp bài' });
         return { ok: true, applied, waitingUser: true, reason: 'submit-disabled' };
     }
@@ -614,4 +618,3 @@ function handleQuizNetworkPayload(payload) {
         S.ui?.toast?.('Quiz chưa xác nhận đúng, cần kiểm tra thủ công', 'warn', 3400);
     }
 }
-

@@ -17,11 +17,17 @@ class VideoCtrl {
         return this.video;
     }
 
-    async autoPlay() {
+    async autoPlay(requestedSpeed = 4) {
         const video = this.attach(detectVideoCapability());
         if (!video) return false;
-        const speed = 4;
+        const speed = requestedSpeed;
         
+        if (this.timer) {
+            if (video.paused) video.play().catch(()=>{});
+            if (video.playbackRate !== speed) video.playbackRate = speed;
+            return true;
+        }
+
         try {
             await video.play();
         } catch (error) {

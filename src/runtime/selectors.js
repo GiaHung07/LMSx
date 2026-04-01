@@ -12,6 +12,8 @@ const SELECTOR_REGISTRY = {
     quizSubmit: [
         'button[type="submit"]',
         'button[data-testid*="submit"]',
+        'button[class*="SubmitButton"]',
+        '[class*="QuizFooter"] button',
         '.submit.btn-brand',
         '.submit.button',
         '.check',
@@ -298,4 +300,3 @@ function detectPageCapabilities(force = false) {
     CAPABILITY_CACHE.at = nowTs();
     return CAPABILITY_CACHE.value;
 }
-
