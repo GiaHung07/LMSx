@@ -1,0 +1,17 @@
+{
+    "git.enabled": false,
+    "codex-project-manager.sourceLanguage": {
+        "tag": "vie",
+        "name": {
+            "vi": "Vietnamese"
+        },
+        "iso2b": "vie",
+        "iso2t": "vie",
+        "iso1": "vi",
+        "scope": "individual",
+        "type": "living",
+        "refName": "Vietnamese",
+        "comment": null,
+        "projectStatus": "source"
+    }
+}

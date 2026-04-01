@@ -32,7 +32,7 @@
 | Tính năng                        | Mô tả                                                                                                                            |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | **Video Tốc Độ Cao (x4)**        | Tự ngầm phát (muted autoplay), khóa tốc độ 4x liên tục, tự detect >98% để qua bài                                                |
-| **Giải Quiz Bằng AI Gemini**     | Scan câu hỏi, trích xuất text gửi qua Gemini 3.1 Pro xử lý đáp án cực kỳ chính xác. Fallback luân phiên vòng tròn nếu AI sai/lỗi |
+| **Giải Quiz Bằng AI Gemini**     | Scan câu hỏi, trích xuất text gửi qua Gemini 2.5 Flash xử lý đáp án cực kỳ chính xác. Fallback luân phiên vòng tròn nếu AI sai/lỗi |
 | **Chuyển Bài Tự Động**           | Hoàn tất Video hoặc Quiz xong hệ thống tự động dò tìm nút ấn chuyển slide/bài học tiếp theo (Navigator)                          |
 | **Kháng Detect Bắt dính**        | Chống chặn Copy/Cut/Select của hệ thống mặc định (Stealth Bypass)                                                                |
 | **UI Chuyên Nghiệp (ShadowDOM)** | Panel xịn mịn hỗ trợ kéo thả (Drag), phóng to thu nhỏ (Resize), ẩn vào góc (minimize FAB), có báo thức log toast (Native UI)     |
@@ -171,3 +171,5 @@ Mã API Key bạn dán chưa đúng hoặc đã hết hạn (Quota exceeded). Vu
 Made with ♥ · PGH · Manifest V3
 
 </div>
+
+# LMSx

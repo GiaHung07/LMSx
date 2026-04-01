@@ -1,148 +1,69 @@
-// background.js: Service worker với AES-GCM encryption
 chrome.runtime.onInstalled.addListener(() => {
-    console.log('[LMS] Extension installed');
+    console.log('[LMSX][background] installed');
 });
 
-// AES-GCM Encryption utilities
 const CryptoUtils = {
     async generateKey() {
-        return await crypto.subtle.generateKey(
-            { name: 'AES-GCM', length: 256 },
-            true,
-            ['encrypt', 'decrypt']
-        );
+        return crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
     },
-    
-    async exportKey(key) {
-        const exported = await crypto.subtle.exportKey('raw', key);
-        return Array.from(new Uint8Array(exported));
-    },
-    
     async encrypt(data, key) {
         const iv = crypto.getRandomValues(new Uint8Array(12));
         const encoded = new TextEncoder().encode(data);
-        
-        const encrypted = await crypto.subtle.encrypt(
-            { name: 'AES-GCM', iv },
-            key,
-            encoded
-        );
-        
-        return {
-            iv: Array.from(iv),
-            data: Array.from(new Uint8Array(encrypted))
-        };
+        const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+        return { iv: Array.from(iv), data: Array.from(new Uint8Array(encrypted)) };
     },
-    
     async decrypt(encryptedObj, key) {
         const iv = new Uint8Array(encryptedObj.iv);
         const data = new Uint8Array(encryptedObj.data);
-        
-        const decrypted = await crypto.subtle.decrypt(
-            { name: 'AES-GCM', iv },
-            key,
-            data
-        );
-        
+        const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
         return new TextDecoder().decode(decrypted);
-    }
+    },
 };
 
-// Secure session storage
-class SecureSessionStorage {
+class EphemeralSessionVault {
     constructor() {
         this.key = null;
         this.data = new Map();
     }
-    
-    async init() {
-        this.key = await CryptoUtils.generateKey();
+
+    async ensureKey() {
+        if (!this.key) this.key = await CryptoUtils.generateKey();
     }
-    
-    async set(key, value) {
-        if (!this.key) await this.init();
+
+    async set(name, value) {
+        await this.ensureKey();
         const encrypted = await CryptoUtils.encrypt(JSON.stringify(value), this.key);
-        this.data.set(key, encrypted);
+        this.data.set(name, encrypted);
     }
-    
-    async get(key) {
-        const encrypted = this.data.get(key);
-        if (!encrypted) return null;
-        if (!this.key) return null;
-        
+
+    async get(name) {
+        const encrypted = this.data.get(name);
+        if (!encrypted || !this.key) return null;
         try {
-            const decrypted = await CryptoUtils.decrypt(encrypted, this.key);
-            return JSON.parse(decrypted);
-        } catch (e) {
+            return JSON.parse(await CryptoUtils.decrypt(encrypted, this.key));
+        } catch {
             return null;
         }
     }
-    
+
     clear() {
         this.data.clear();
         this.key = null;
     }
 }
 
-const sessionStorage = new SecureSessionStorage();
+const sessionVault = new EphemeralSessionVault();
 
-// Message handling
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    handleMessage(request, sender, sendResponse);
-    return true;
-});
+function localGet(key) {
+    return new Promise(resolve => {
+        chrome.storage.local.get(key, result => resolve(result || {}));
+    });
+}
 
-async function handleMessage(request, sender, sendResponse) {
-    try {
-        switch (request.action) {
-            case 'storeSecure':
-                await sessionStorage.set(request.key, request.data);
-                sendResponse({ success: true });
-                break;
-                
-            case 'retrieveSecure':
-                const data = await sessionStorage.get(request.key);
-                sendResponse({ success: true, data });
-                break;
-                
-            case 'clearSecure':
-                sessionStorage.clear();
-                sendResponse({ success: true });
-                break;
-                
-            case 'getConfig':
-                chrome.storage.local.get('config', (result) => {
-                    sendResponse({ config: result.config || getDefaultConfig() });
-                });
-                break;
-                
-            case 'saveConfig':
-                chrome.storage.local.set({ config: request.config }, () => {
-                    sendResponse({ success: true });
-                });
-                break;
-                
-            case 'getStats':
-                chrome.storage.local.get('stats', (result) => {
-                    sendResponse({ stats: result.stats || getDefaultStats() });
-                });
-                break;
-                
-            case 'updateStats':
-                chrome.storage.local.get('stats', (result) => {
-                    const stats = { ...result.stats, ...request.stats };
-                    chrome.storage.local.set({ stats }, () => {
-                        sendResponse({ success: true });
-                    });
-                });
-                break;
-                
-            default:
-                sendResponse({ error: 'Unknown action' });
-        }
-    } catch (e) {
-        sendResponse({ error: e.message });
-    }
+function localSet(value) {
+    return new Promise(resolve => {
+        chrome.storage.local.set(value, () => resolve());
+    });
 }
 
 function getDefaultConfig() {
@@ -150,43 +71,69 @@ function getDefaultConfig() {
         videoSpeed: 4,
         autoSubmitQuiz: true,
         autoNextLesson: true,
-        stopOnNewContent: true,
-        retryFailedQuiz: true,
+        pauseWhenHidden: false,
         maxQuizRetries: 3,
-        humanLikeDelay: true,
-        typingSpeed: 50
     };
 }
 
 function getDefaultStats() {
     return {
-        totalVideos: 0,
-        totalQuizzes: 0,
-        totalCorrect: 0,
-        totalTime: 0,
-        sessionsCompleted: 0
+        videosCompleted: 0,
+        quizzesDetected: 0,
+        answersApplied: 0,
+        answersVerified: 0,
+        navigations: 0,
+        errors: 0,
     };
 }
 
-// Cleanup on browser close
-chrome.runtime.onSuspend.addListener(() => {
-    sessionStorage.clear();
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    handleMessage(request).then(sendResponse).catch(error => sendResponse({ ok: false, error: error.message }));
+    return true;
 });
 
-// WebRequest monitoring (for token capture if needed)
-chrome.webRequest?.onBeforeSendHeaders?.addListener(
-    (details) => {
-        const authHeader = details.requestHeaders?.find(
-            h => h.name.toLowerCase() === 'authorization'
-        );
-        
-        if (authHeader && details.url.includes('lms.ptit.edu.vn')) {
-            // Store encrypted token
-            sessionStorage.set('authToken', authHeader.value);
+async function handleMessage(request) {
+    switch (request?.action) {
+        case 'vault:set':
+            await sessionVault.set(request.key, request.data);
+            return { ok: true, storage: 'ephemeral-session' };
+        case 'vault:get':
+            return { ok: true, storage: 'ephemeral-session', data: await sessionVault.get(request.key) };
+        case 'vault:clear':
+            sessionVault.clear();
+            return { ok: true, storage: 'ephemeral-session' };
+        case 'vault:info':
+            return { ok: true, storage: 'ephemeral-session', note: 'Data is cleared when the service worker unloads.' };
+        case 'getConfig':
+            return { ok: true, config: (await localGet('config')).config || getDefaultConfig() };
+        case 'saveConfig':
+            await localSet({ config: request.config || getDefaultConfig() });
+            return { ok: true };
+        case 'getStats':
+            return { ok: true, stats: (await localGet('stats')).stats || getDefaultStats() };
+        case 'updateStats': {
+            const existing = (await localGet('stats')).stats || getDefaultStats();
+            const stats = { ...existing, ...(request.stats || {}) };
+            await localSet({ stats });
+            return { ok: true, stats };
         }
+        default:
+            return { ok: false, error: 'Unknown action' };
+    }
+}
+
+chrome.runtime.onSuspend.addListener(() => {
+    sessionVault.clear();
+    console.log('[LMSX][background] session vault cleared on suspend');
+});
+
+chrome.webRequest?.onBeforeSendHeaders?.addListener(
+    details => {
+        const authHeader = details.requestHeaders?.find(header => header.name.toLowerCase() === 'authorization');
+        if (authHeader && details.url.includes('lms.ptit.edu.vn')) sessionVault.set('authToken', authHeader.value);
     },
     { urls: ['https://lms.ptit.edu.vn/*'] },
     ['requestHeaders']
 );
 
-console.log('[LMS] Background service worker initialized');
+console.log('[LMSX][background] ready');

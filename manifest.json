@@ -3,7 +3,7 @@
   "name": "LMSX",
   "short_name": "LMSX",
   "version": "3.6",
-  "description": "LMSX - Auto video, auto quiz, auto navigation",
+  "description": "LMSX",
   "permissions": [
     "storage",
     "webRequest",
@@ -48,7 +48,8 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "inject.js"
+        "inject.js",
+        "JetBrainsMono-Regular.woff2"
       ],
       "matches": [
         "https://lms.ptit.edu.vn/*"

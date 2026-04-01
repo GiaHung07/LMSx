@@ -17,11 +17,29 @@
         "comments": [],
         "requiredExtensions": {
             "codexEditor": "0.23.0"
-        }
+        },
+        "validationCount": 1,
+        "validationCountAudio": 1,
+        "abbreviation": ""
     },
     "idAuthorities": {},
     "identification": {},
-    "languages": [],
+    "languages": [
+        {
+            "tag": "vie",
+            "name": {
+                "vi": "Vietnamese"
+            },
+            "iso2b": "vie",
+            "iso2t": "vie",
+            "iso1": "vi",
+            "scope": "individual",
+            "type": "living",
+            "refName": "Vietnamese",
+            "comment": null,
+            "projectStatus": "source"
+        }
+    ],
     "type": {
         "flavorType": {
             "name": "default",
@@ -109,5 +127,71 @@
     "ingredients": {},
     "copyright": {
         "shortStatements": []
-    }
+    },
+    "edits": [
+        {
+            "editMap": [
+                "meta",
+                "validationCount"
+            ],
+            "value": 1,
+            "timestamp": 1774989031557,
+            "type": "user-edit",
+            "author": "unknown"
+        },
+        {
+            "editMap": [
+                "meta",
+                "validationCountAudio"
+            ],
+            "value": 1,
+            "timestamp": 1774989031558,
+            "type": "user-edit",
+            "author": "unknown"
+        },
+        {
+            "editMap": [
+                "meta",
+                "abbreviation"
+            ],
+            "value": "",
+            "timestamp": 1774989031558,
+            "type": "user-edit",
+            "author": "unknown"
+        },
+        {
+            "editMap": [
+                "languages"
+            ],
+            "value": [
+                {
+                    "tag": "vie",
+                    "name": {
+                        "vi": "Vietnamese"
+                    },
+                    "iso2b": "vie",
+                    "iso2t": "vie",
+                    "iso1": "vi",
+                    "scope": "individual",
+                    "type": "living",
+                    "refName": "Vietnamese",
+                    "comment": null,
+                    "projectStatus": "source"
+                }
+            ],
+            "timestamp": 1774989031558,
+            "type": "user-edit",
+            "author": "unknown"
+        },
+        {
+            "editMap": [
+                "spellcheckIsEnabled"
+            ],
+            "value": false,
+            "timestamp": 1774989031558,
+            "type": "user-edit",
+            "author": "unknown"
+        }
+    ],
+    "spellcheckIsEnabled": false
 }

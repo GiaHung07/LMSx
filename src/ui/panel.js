@@ -1,4 +1,3 @@
-// ── BUILD SHADOW DOM ─────────────────────────────────────────
 function buildUI() {
     const host = document.createElement('div');
     host.id = '__lmsx_root__';
@@ -6,7 +5,11 @@ function buildUI() {
     S.shadow = host.attachShadow({ mode: 'closed' });
 
     const style = document.createElement('style');
-    style.textContent = CSS;
+    const fontUrl = globalThis.chrome?.runtime?.getURL?.('JetBrainsMono-Regular.woff2') || '';
+    const fontFace = fontUrl
+        ? `@font-face{font-family:'JetBrains Mono';src:url('${fontUrl}') format('woff2');font-weight:400;font-style:normal;font-display:swap;}`
+        : '';
+    style.textContent = `${fontFace}\n${CSS}`;
     S.shadow.appendChild(style);
 
     const wrapper = document.createElement('div');
@@ -17,220 +20,447 @@ function buildUI() {
     return S.shadow;
 }
 
-// ── PANEL CONTROLLER ─────────────────────────────────────────
 function initPanel(root) {
     const $ = id => root.getElementById(id);
     const panel = $('P');
     if (!panel) return;
+    const ids = {
+        card: $('card'),
+        miniDock: $('miniDock'),
+        logSection: $('logSection'),
+        logWrap: $('logWrap'),
+        statusNote: $('status-note'),
+        sepEl: $('sepEl'),
+        footerEl: $('footerEl'),
+        liveDot: $('liveDot'),
+        slabel: $('slabel'),
+        toggle: $('tog'),
+        orInput: $('orInput'),
+        grInput: $('grInput'),
+        saveBtn: $('saveBtn'),
+        savedHint: $('savedHint'),
+    };
 
-    // Ensure panel gets pointer-events
-    panel.style.pointerEvents = 'auto';
+    let dragging = false;
+    let sx = 0;
+    let sy = 0;
+    let sl = 0;
+    let st = 0;
+    let collapsed = false;
+    let hidden = false;
 
-    // ─── DRAG ───
-    const header = $('H');
-    let dragging = false, sx = 0, sy = 0, sl = 0, st = 0;
-
-    function fixPosition() {
-        // Convert right→left on first interaction
-        if (panel.style.left === '' || panel.style.left === 'auto') {
-            const r = panel.getBoundingClientRect();
-            panel.style.left = r.left + 'px';
-            panel.style.top = r.top + 'px';
-            panel.style.right = 'auto';
-            panel.style.bottom = 'auto';
+    function setDockedState(nextHidden, persist = true) {
+        hidden = nextHidden === true;
+        panel.classList.toggle('docked', hidden);
+        if (persist) {
+            updateUiPrefs({ panel: { minimized: hidden, closed: false } });
         }
     }
 
-    header.addEventListener('mousedown', e => {
-        if (e.target.closest('.H-dots')) return;
-        e.preventDefault();
-        fixPosition();
+    function applyPanelPrefs() {
+        const prefs = S.uiPrefs.panel;
+        const width = clamp(Number(prefs.width) || 300, 300, 300);
+        const top = Number.isFinite(prefs.top) ? prefs.top : 16;
+        setDockedState(prefs.minimized === true, false);
+        panel.style.width = `${width}px`;
+        panel.style.top = `${top}px`;
+        if (prefs.left !== null && prefs.left !== undefined) {
+            panel.style.left = `${prefs.left}px`;
+            panel.style.right = 'auto';
+        } else {
+            panel.style.right = '16px';
+            panel.style.left = 'auto';
+        }
+    }
+
+    function clampPanel() {
+        const rect = panel.getBoundingClientRect();
+        const nextLeft = clamp(rect.left, 0, Math.max(0, window.innerWidth - rect.width));
+        const nextTop = clamp(rect.top, 0, Math.max(0, window.innerHeight - rect.height));
+        panel.style.left = `${nextLeft}px`;
+        panel.style.top = `${nextTop}px`;
+        panel.style.right = 'auto';
+        updateUiPrefs({ panel: { left: nextLeft, top: nextTop, width: rect.width, height: rect.height, minimized: false, closed: false } });
+    }
+
+    function startDragging(event) {
+        if (event.target.closest('.dots') || event.target.closest('button') || event.target.closest('a') || event.target.closest('input')) return;
+        event.preventDefault();
         dragging = true;
         panel.classList.add('is-dragging');
-        const r = panel.getBoundingClientRect();
-        sl = r.left; st = r.top; sx = e.clientX; sy = e.clientY;
-        document.addEventListener('mousemove', dragMove);
-        document.addEventListener('mouseup', dragUp);
-    });
-    function dragMove(e) {
-        if (!dragging) return;
-        const nx = sl + (e.clientX - sx);
-        const ny = st + (e.clientY - sy);
-        const mxL = window.innerWidth - panel.offsetWidth;
-        const mxT = window.innerHeight - panel.offsetHeight;
-        panel.style.left = Math.max(0, Math.min(mxL, nx)) + 'px';
-        panel.style.top  = Math.max(0, Math.min(mxT, ny)) + 'px';
+        const rect = panel.getBoundingClientRect();
+        sl = rect.left;
+        st = rect.top;
+        sx = event.clientX;
+        sy = event.clientY;
     }
-    function dragUp() {
+
+    panel.querySelectorAll('.titlebar').forEach(node => {
+        node.addEventListener('mousedown', startDragging);
+    });
+
+    document.addEventListener('mousemove', event => {
+        if (!dragging) return;
+        const nextLeft = clamp(sl + (event.clientX - sx), 0, Math.max(0, window.innerWidth - panel.offsetWidth));
+        const nextTop = clamp(st + (event.clientY - sy), 0, Math.max(0, window.innerHeight - panel.offsetHeight));
+        panel.style.left = `${nextLeft}px`;
+        panel.style.top = `${nextTop}px`;
+        panel.style.right = 'auto';
+    });
+    document.addEventListener('mouseup', () => {
+        if (!dragging) return;
         dragging = false;
         panel.classList.remove('is-dragging');
-        document.removeEventListener('mousemove', dragMove);
-        document.removeEventListener('mouseup', dragUp);
-    }
-
-    // ─── RESIZE ───
-    function bindResize(el, dir) {
-        el.addEventListener('mousedown', e => {
-            e.preventDefault(); e.stopPropagation();
-            fixPosition();
-            const r = panel.getBoundingClientRect();
-            const ox = e.clientX, oy = e.clientY, ow = r.width, oh = r.height, oL = r.left;
-            panel.classList.add('is-dragging');
-            function rm(e) {
-                const dx = e.clientX - ox, dy = e.clientY - oy;
-                if (dir.includes('e')) panel.style.width = Math.max(200, ow + dx) + 'px';
-                if (dir === 'w') { const nw = Math.max(200, ow - dx); panel.style.width = nw + 'px'; panel.style.left = (oL + ow - nw) + 'px'; }
-                if (dir.includes('s')) panel.style.height = Math.max(150, oh + dy) + 'px';
-            }
-            function ru() { panel.classList.remove('is-dragging'); document.removeEventListener('mousemove', rm); document.removeEventListener('mouseup', ru); }
-            document.addEventListener('mousemove', rm);
-            document.addEventListener('mouseup', ru);
-        });
-    }
-    panel.querySelectorAll('.RZ').forEach(h => { 
-        h.style.pointerEvents = 'auto'; 
-        bindResize(h, h.dataset.d); 
-    });
-    const grip = $('grip');
-    if (grip) { grip.style.pointerEvents = 'auto'; bindResize(grip, 'se'); }
-
-    // ─── MINIMIZE / CLOSE ───
-    const fab = $('fab');
-    $('dot-min')?.addEventListener('click', () => {
-        panel.classList.add('P-hidden');
-        if (fab) fab.classList.add('show');
-    });
-    $('dot-cls')?.addEventListener('click', () => {
-        panel.classList.add('P-hidden');
-        // close = no FAB shown
-    });
-    fab?.addEventListener('click', () => {
-        panel.classList.remove('P-hidden');
-        fab.classList.remove('show');
-    });
-    // Make FAB clickable
-    if (fab) fab.style.pointerEvents = 'auto';
-
-    // ─── TOGGLE ───
-    let running = false;
-    const tgl = $('tgl');
-    tgl?.addEventListener('click', () => {
-        running = !running;
-        const es = ['tgl', 'tgl-dot', 'tgl-name', 'tgl-sub', 'tgl-sw'];
-        es.forEach(id => $(id)?.classList.toggle('on', running));
-        $('tgl-sub').textContent = running ? 'Đang chạy — auto video + quiz' : 'Nhấn để bắt đầu';
-        setLog(running ? 'Đã kích hoạt...' : 'Chờ kích hoạt...', running ? 'on' : 'off');
-        S.active = running;
-        if (running) { startAutomation(); } else { stopAutomation(); }
+        clampPanel();
     });
 
-    // ─── API KEY ───
-    const apiInp = $('api-inp');
-    const apiBtn = $('api-btn');
-    const aiSel = $('ai-sel');
-
-    function updateApiUI() {
-        if (!apiInp || !aiSel) return;
-        const curKey = S.apiKeys[S.aiProvider] || '';
-        apiInp.value = curKey;
-        if (curKey) {
-            apiBtn.classList.add('ok');
-            apiBtn.textContent = 'OK';
-        } else {
-            apiBtn.classList.remove('ok');
-            apiBtn.textContent = 'LƯU';
+    function setStatus(state, label) {
+        if (ids.liveDot) ids.liveDot.className = `live-dot ${state}`;
+        if (ids.slabel) {
+            ids.slabel.className = `slabel ${state}`;
+            ids.slabel.textContent = label || state;
         }
     }
 
-    if (aiSel) {
-        aiSel.value = S.aiProvider;
-        aiSel.addEventListener('change', (e) => {
-            S.aiProvider = e.target.value;
-            localStorage.setItem('lms_ai_provider', S.aiProvider);
-            updateApiUI();
-        });
+    function logTypeFromLevel(level) {
+        if (level === 'error') return 'err';
+        if (level === 'warn') return 'spin';
+        if (level === 'info') return 'ok';
+        return 'd';
     }
 
-    updateApiUI();
+    function mapToPhaseLog(entry) {
+        if (!entry || typeof entry !== 'object') return null;
+        const moduleName = String(entry.module || '');
+        const eventName = String(entry.event || '');
+        const level = String(entry.level || '');
+        const detail = sanitizePanelMessage(entry.detail || '');
 
-    if (apiInp && apiBtn) {
-        apiInp.addEventListener('input', () => {
-            apiBtn.classList.remove('ok');
-            apiBtn.textContent = 'LƯU';
-        });
+        if (moduleName === 'quiz' && eventName === 'payload:summary') {
+            return { type: 'spin', text: 'Đọc câu hỏi...' };
+        }
+        if (moduleName === 'quiz' && (eventName === 'payload:text' || eventName === 'payload:full')) {
+            return { type: 'ok', text: 'Scrape xong' };
+        }
+        if (moduleName === 'ai' && (eventName === 'request' || eventName.startsWith('batch:prompt') || eventName.startsWith('batch:input'))) {
+            return { type: 'spin', text: 'Gọi AI...' };
+        }
+        if (moduleName === 'ai' && (eventName === 'batch:parsed' || eventName === 'batch:result')) {
+            return { type: 'ok', text: 'Nhận phản hồi' };
+        }
+        if (moduleName === 'quiz' && eventName === 'apply:start') {
+            return { type: 'spin', text: 'Đang điền đáp án...' };
+        }
+        if (moduleName === 'quiz' && eventName === 'submit') {
+            return { type: 'ok', text: 'Xong' };
+        }
+        if (moduleName === 'video' && eventName === 'play:start') {
+            return { type: 'spin', text: 'Đang chạy video x4...' };
+        }
+        if (moduleName === 'video' && eventName === 'play:done') {
+            return { type: 'ok', text: 'Video xong' };
+        }
 
-        apiBtn.addEventListener('click', () => {
-            const val = apiInp.value.trim();
-            S.apiKeys[S.aiProvider] = val;
-            localStorage.setItem('lms_' + S.aiProvider + '_key', val);
-            
-            if (val) {
-                apiBtn.classList.add('ok');
-                apiBtn.textContent = 'OK';
-                const name = aiSel ? aiSel.options[aiSel.selectedIndex].text : 'API';
-                toast('Đã lưu ' + name + ' Key!', 'ok', 3000);
-            } else {
-                apiBtn.classList.remove('ok');
-                apiBtn.textContent = 'LƯU';
-                toast('Đã xóa bỏ API Key', 'warn', 3000);
+        if (moduleName === 'ui' && eventName === 'toast' && detail) {
+            return { type: level === 'error' ? 'err' : level === 'warn' ? 'spin' : 'ok', text: detail };
+        }
+
+        if ((level === 'warn' || level === 'error') && detail) {
+            return { type: level === 'error' ? 'err' : 'spin', text: detail };
+        }
+
+        return null;
+    }
+
+    function sanitizePanelMessage(value) {
+        const text = String(value || '').replace(/\s+/g, ' ').trim();
+        if (!text) return '';
+        if (/^selected answers before submit/i.test(text)) return '';
+        return text.length > 120 ? `${text.slice(0, 117)}...` : text;
+    }
+
+    function deriveRuntimePhaseLog() {
+        const state = String(S.runtime?.state || '');
+        const lastAction = String(S.runtime?.lastAction || '').toLowerCase();
+        const stateDetail = String(S.runtime?.stateMeta?.detail || '').toLowerCase();
+        const running = S.runtime?.active && state !== 'paused';
+        const caps = S.runtime?.capabilities || {};
+        const isQuizStart = caps?.quizStart?.matched;
+        const isQuizActive = caps?.quiz?.matched;
+
+        // Trang mới / chưa bắt đầu quiz: không hiển thị pha quiz cũ
+        if (state === 'idle' || state === 'detecting-page' || isQuizStart) {
+            if (running) return { type: 'spin', text: 'Đang quét trang...' };
+            return { type: 'ok', text: 'Sẵn sàng' };
+        }
+
+        if (state === 'completed') return { type: 'ok', text: 'Xong' };
+        if (state === 'running-video') return { type: 'spin', text: 'Đang chạy video x4...' };
+        if (state === 'waiting-ai') return { type: 'spin', text: 'Gọi AI...' };
+
+        // Chỉ hiện pha quiz khi đang thực sự trong quiz
+        if (state === 'running-quiz' && isQuizActive) {
+            if (stateDetail.includes('tìm nút nộp')) {
+                return { type: 'spin', text: 'Đang tìm nút nộp bài...' };
             }
-        });
-    }
-
-    // ─── PUBLIC UI API ───
-    function setProgress(done, total, flags = {}) {
-        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-        const el = $('pct'); if (el) el.innerHTML = `${pct}<sup>%</sup>`;
-        const fl = $('fill'); if (fl) fl.style.width = `${pct}%`;
-        const fr = $('frac'); if (fr) fr.textContent = `${done} / ${total || '?'} mục`;
-        if (flags.video) $('tag-v')?.classList.add('done');
-        if (flags.quiz) $('tag-q')?.classList.add('done');
-        if (flags.hw) $('tag-h')?.classList.add('done');
-    }
-
-    function setLog(text, state = 'on', time = '') {
-        const t = $('log-txt'), d = $('log-dot'), tm = $('log-tm');
-        if (t) t.textContent = text;
-        if (d) d.className = `L-dot ${state}`;
-        if (tm) tm.textContent = time || _time();
-    }
-
-    function setApiStatus(state) {
-        // Obsolete but kept for backwards compatibility internally if used
-        if (apiBtn) {
-            if (state === 'ok') {
-                apiBtn.classList.add('ok');
-                apiBtn.textContent = 'OK';
-            } else {
-                apiBtn.classList.remove('ok');
-                apiBtn.textContent = 'LƯU';
+            if (stateDetail.includes('chờ phản hồi') || stateDetail.includes('đã nộp')) {
+                return { type: 'spin', text: 'Đã nộp bài, chờ phản hồi...' };
+            }
+            if (lastAction.includes('điền') || lastAction.includes('áp án')) {
+                return { type: 'spin', text: 'Đang điền đáp án...' };
             }
         }
+
+        if (running && (state === 'ready' || state === 'running-quiz')) {
+            return { type: 'spin', text: 'Đang quét trang...' };
+        }
+        return null;
     }
 
-    const TOAST_ICONS = {
-        ok: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
-        warn: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
-        error: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`,
-        info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`
+    function renderLogList() {
+        if (!ids.logWrap) return;
+        const runtimeLogs = S.runtime.logs || [];
+        const phaseLogs = [];
+        runtimeLogs.forEach(entry => {
+            const mapped = mapToPhaseLog(entry);
+            if (!mapped) return;
+            const prev = phaseLogs[phaseLogs.length - 1];
+            if (prev && prev.text === mapped.text) return;
+            phaseLogs.push(mapped);
+        });
+
+        const runtimePhase = deriveRuntimePhaseLog();
+        if (runtimePhase) {
+            const prev = phaseLogs[phaseLogs.length - 1];
+            if (!prev || prev.text !== runtimePhase.text) phaseLogs.push(runtimePhase);
+        }
+
+        const logs = phaseLogs.slice(-6);
+        ids.logWrap.innerHTML = '';
+        if (!logs.length) {
+            const line = document.createElement('div');
+            line.className = 'log-line vis';
+            line.innerHTML = `<span class="lt d">·</span><span class="lm lo">${escapeHtml(S.runtime.lastAction || 'Chờ câu hỏi...')}</span>`;
+            ids.logWrap.appendChild(line);
+            return;
+        }
+
+        logs.forEach((entry, index) => {
+            const line = document.createElement('div');
+            const text = escapeHtml(entry.text || '...');
+            const type = entry.type || logTypeFromLevel(entry.level);
+            const isLatest = index === logs.length - 1;
+            line.className = `log-line vis${isLatest ? '' : ' dim'}`;
+            line.innerHTML = `<span class="lt ${type}">${type === 'err' ? '✕' : type === 'ok' ? '✓' : type === 'spin' ? '›' : '·'}</span><span class="lm${isLatest ? ' hi' : ''}">${text}</span>`;
+            ids.logWrap.appendChild(line);
+        });
+    }
+
+    function syncStatus() {
+        const running = S.runtime.active && S.runtime.state !== 'paused';
+        const done = S.runtime.state === 'completed';
+        if (done) setStatus('done', 'done');
+        else if (running) setStatus('running', 'running');
+        else setStatus('idle', 'idle');
+
+        if (ids.statusNote) ids.statusNote.textContent = S.runtime.lastAction || 'Chờ câu hỏi...';
+        renderLogList();
+    }
+
+    function showSavedHint(message = '✓ Đã lưu') {
+        if (!ids.savedHint) return;
+        ids.savedHint.textContent = message;
+        ids.savedHint.style.opacity = '1';
+        setManagedTimeout(() => {
+            ids.savedHint.style.opacity = '0';
+            setManagedTimeout(() => ids.card?.classList.remove('flipped'), 320);
+        }, 1100);
+    }
+
+    function getChromeStorage() {
+        return globalThis.chrome?.storage?.sync || null;
+    }
+
+    function chromeSyncGet(keys) {
+        const storage = getChromeStorage();
+        if (!storage) return Promise.resolve({});
+        return new Promise(resolve => {
+            storage.get(keys, result => resolve(result || {}));
+        });
+    }
+
+    function chromeSyncSet(payload) {
+        const storage = getChromeStorage();
+        if (!storage) return Promise.resolve();
+        return new Promise(resolve => {
+            storage.set(payload, () => resolve());
+        });
+    }
+
+    async function loadKeys() {
+        const result = await chromeSyncGet(['lmsx_or_key', 'lmsx_gr_key', 'lmsx_model']);
+        const nextOr = sanitizeAiKeyInput(result.lmsx_or_key || S.settings.ai.keys.openrouter || '');
+        const nextGr = sanitizeAiKeyInput(result.lmsx_gr_key || S.settings.ai.keys.groq || '');
+        const nextModel = normalizeProvider(result.lmsx_model || S.settings.ai.provider || 'groq');
+        const preferred = nextModel === 'openrouter' || nextModel === 'groq' ? nextModel : S.settings.ai.provider;
+
+        if (ids.orInput) ids.orInput.value = nextOr;
+        if (ids.grInput) ids.grInput.value = nextGr;
+
+        const changed = nextOr !== S.settings.ai.keys.openrouter || nextGr !== S.settings.ai.keys.groq || preferred !== S.settings.ai.provider;
+        S.settings.ai.keys.openrouter = nextOr;
+        S.settings.ai.keys.groq = nextGr;
+        S.settings.ai.provider = preferred;
+        S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys[S.settings.ai.provider] || '');
+        if (changed) await S.storage.saveSettings(S.settings);
+    }
+
+    function resolveProviderForRun() {
+        const current = normalizeProvider(S.settings.ai.provider);
+        const hasCurrent = !!sanitizeAiKeyInput(S.settings.ai.keys[current] || '');
+        if (hasCurrent) return current;
+        const hasGroq = !!sanitizeAiKeyInput(S.settings.ai.keys.groq || '');
+        const hasOr = !!sanitizeAiKeyInput(S.settings.ai.keys.openrouter || '');
+        if (hasGroq) return 'groq';
+        if (hasOr) return 'openrouter';
+        return current;
+    }
+
+    async function saveKeys() {
+        const orVal = sanitizeAiKeyInput(ids.orInput?.value || '');
+        const grVal = sanitizeAiKeyInput(ids.grInput?.value || '');
+
+        if (orVal && !isLikelyApiKey('openrouter', orVal)) {
+            showSavedHint('✕ OR key sai định dạng');
+            return;
+        }
+        if (grVal && !isLikelyApiKey('groq', grVal)) {
+            showSavedHint('✕ Groq key sai định dạng');
+            return;
+        }
+
+        S.settings.ai.keys.openrouter = orVal;
+        S.settings.ai.keys.groq = grVal;
+        S.settings.ai.provider = resolveProviderForRun();
+        S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys[S.settings.ai.provider] || '');
+        delete S.runtime._aiBlocked;
+        await S.storage.saveSettings(S.settings);
+
+        await chromeSyncSet({
+            lmsx_or_key: orVal,
+            lmsx_gr_key: grVal,
+            lmsx_model: S.settings.ai.provider,
+        });
+        showSavedHint('✓ Đã lưu');
+    }
+
+    async function toggleRun() {
+        if (hidden) {
+            setDockedState(false);
+            ids.logSection?.classList.remove('collapsed');
+            if (ids.sepEl) ids.sepEl.style.display = '';
+            if (ids.footerEl) ids.footerEl.style.cssText = '';
+        }
+        if (collapsed) {
+            collapsed = false;
+            ids.logSection?.classList.remove('collapsed');
+        }
+
+        if (S.runtime.active && S.runtime.state !== 'paused') {
+            stopAutomation('panel:dotG');
+            return;
+        }
+
+        S.settings.ai.provider = resolveProviderForRun();
+        S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys[S.settings.ai.provider] || '');
+        await S.storage.saveSettings(S.settings);
+        startAutomation('panel:dotG');
+    }
+
+    $('dotR')?.addEventListener('click', () => {
+        setDockedState(!hidden);
+        if (hidden) {
+            ids.logSection?.classList.add('collapsed');
+            if (ids.sepEl) ids.sepEl.style.display = 'none';
+            if (ids.footerEl) {
+                ids.footerEl.style.cssText = 'max-height:0;opacity:0;overflow:hidden;padding:0;pointer-events:none;transition:max-height .3s,opacity .3s,padding .3s';
+            }
+            return;
+        }
+        if (ids.sepEl) ids.sepEl.style.display = '';
+        if (ids.footerEl) ids.footerEl.style.cssText = '';
+        if (!collapsed) ids.logSection?.classList.remove('collapsed');
+    });
+
+    ids.miniDock?.addEventListener('click', () => {
+        setDockedState(false);
+        if (ids.sepEl) ids.sepEl.style.display = '';
+        if (ids.footerEl) ids.footerEl.style.cssText = '';
+        if (!collapsed) ids.logSection?.classList.remove('collapsed');
+    });
+
+    $('dotY')?.addEventListener('click', () => {
+        if (hidden) return;
+        collapsed = !collapsed;
+        ids.logSection?.classList.toggle('collapsed', collapsed);
+    });
+
+    $('dotG')?.addEventListener('click', () => { toggleRun(); });
+    ids.toggle?.addEventListener('click', async () => {
+        const nextAuto = !(S.settings.automation.autoSubmitQuiz !== false);
+        S.settings.automation.autoSubmitQuiz = nextAuto;
+        await S.storage.saveSettings(S.settings);
+        ids.toggle.classList.toggle('on', nextAuto);
+    });
+
+    $('flipBtn')?.addEventListener('click', () => ids.card?.classList.add('flipped'));
+    $('backBtn')?.addEventListener('click', () => ids.card?.classList.remove('flipped'));
+
+    panel.querySelectorAll('.eye-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            const target = $(button.dataset.t);
+            if (!target) return;
+            target.type = target.type === 'password' ? 'text' : 'password';
+        });
+    });
+
+    ids.saveBtn?.addEventListener('click', () => { saveKeys(); });
+
+    function toast(message, type = 'info') {
+        S.runtime.lastAction = message;
+        S.runtime.logs.push({ level: type, module: 'ui', event: 'toast', detail: message, timestamp: nowTs() });
+        S.runtime.logs = S.runtime.logs.slice(-40);
+        syncStatus();
+    }
+
+    function sync() {
+        if (!S.settings || !S.runtime || !S.uiPrefs) return;
+        applyPanelPrefs();
+        if (ids.toggle) ids.toggle.classList.toggle('on', S.settings.automation.autoSubmitQuiz !== false);
+        syncStatus();
+    }
+
+    function pushLog() {
+        syncStatus();
+    }
+
+    S.ui = {
+        toast,
+        pushLog,
+        sync,
+        setProgress(progress) {
+            S.runtime.progress = progress;
+            syncStatus();
+        },
     };
-    function toast(msg, type = 'info', dur = 3500) {
-        const c = $('toasts'); if (!c) return;
-        const el = document.createElement('div');
-        el.className = `TT-item ${type}`;
-        el.innerHTML = `<div class="TT-icn">${TOAST_ICONS[type] || TOAST_ICONS.info}</div><div class="TT-msg">${msg.replace(/</g,'&lt;')}</div><div class="TT-ts">0s</div>`;
-        el.style.pointerEvents = 'auto';
-        c.appendChild(el);
-        requestAnimationFrame(() => el.classList.add('show'));
-        let sec = 0;
-        const tick = setInterval(() => { sec++; const ts = el.querySelector('.TT-ts'); if (ts) ts.textContent = sec + 's'; }, 1000);
-        setTimeout(() => { clearInterval(tick); el.classList.remove('show'); setTimeout(() => el.remove(), 250); }, dur);
-    }
 
-    // Expose to outer scope
-    S.ui = { setProgress, setLog, setApiStatus, toast, setRunning: (v) => {
-        running = v; S.active = v;
-    }};
+    applyPanelPrefs();
+    loadKeys().finally(() => {
+        sync();
+    });
 
-    setLog('Ready', 'off');
+    addCleanup(() => {
+        panel.remove();
+    });
 }
+

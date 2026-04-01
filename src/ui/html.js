@@ -1,55 +1,118 @@
-const GRIP_SVG = `<svg viewBox="0 0 12 12" fill="none"><line x1="4" y1="11" x2="11" y2="4" stroke="#606072" stroke-width="1.5" stroke-linecap="round"/><line x1="7" y1="11" x2="11" y2="7" stroke="#606072" stroke-width="1.5" stroke-linecap="round"/><line x1="10" y1="11" x2="11" y2="10" stroke="#606072" stroke-width="1.5" stroke-linecap="round"/></svg>`;
-const BOLT_SVG = `<svg viewBox="0 0 24 24"><path d="M11 21h-1l1-7H7.5c-.88 0-.33-.75-.31-.78C8.48 10.94 10.42 7.54 13.01 3h1l-1 7h3.51c.4 0 .62.19.4.66C12.97 17.55 11 21 11 21z"/></svg>`;
-
 const HTML = `
-<div class="lms-panel" id="P">
-  <div class="H" id="H">
-    <div class="H-wm">LMS<em>X</em><span class="H-meta">v3.6 · PTIT</span></div>
-    <div class="H-dots">
-      <div class="H-dot H-dot--min" id="dot-min" title="Thu nhỏ"></div>
-      <div class="H-dot H-dot--cls" id="dot-cls" title="Đóng"></div>
+<div class="scene" id="P">
+  <div class="card" id="card">
+    <div class="face front" id="frontFace">
+      <div class="titlebar" id="H">
+        <div class="dots">
+          <div class="dot r" id="dotR" title="Ẩn panel"></div>
+          <div class="dot y" id="dotY" title="Thu gọn"></div>
+          <div class="dot g glow" id="dotG" title="Chạy"></div>
+        </div>
+        <div class="ptitle">LMSX</div>
+        <button class="gear-btn" id="flipBtn" title="Cài đặt">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+            <path d="M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M3.05 12.95l1.06-1.06M11.89 4.11l1.06-1.06" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="collapsible" id="logSection" style="max-height:200px">
+        <div class="log-wrap" id="logWrap">
+          <div class="log-line vis">
+            <span class="lt d">·</span>
+            <span class="lm lo" id="status-note">Chờ câu hỏi...</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sep" id="sepEl"></div>
+      <div class="footer" id="footerEl">
+        <div class="status-left">
+          <div class="live-dot idle" id="liveDot"></div>
+          <span class="slabel" id="slabel">idle</span>
+        </div>
+        <div class="toggle-row">
+          <span class="tlabel">Auto</span>
+          <div class="tog on" id="tog"><div class="tog-thumb"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="face back">
+      <div class="titlebar">
+        <div class="dots">
+          <div class="dot r"></div>
+          <div class="dot y"></div>
+          <div class="dot g"></div>
+        </div>
+        <div class="ptitle">Cài đặt</div>
+        <div style="width:17px"></div>
+      </div>
+
+      <div class="back-body">
+        <div class="section-label">API KEYS</div>
+
+        <div class="api-block">
+          <div class="api-provider">
+            <div class="pdot or"></div>
+            <span class="pname">OpenRouter</span>
+          </div>
+          <div class="api-row">
+            <input class="api-input" id="orInput" type="password" placeholder="sk-or-v1-..." spellcheck="false" autocomplete="off"/>
+            <button class="eye-btn" data-t="orInput" title="Hiện/Ẩn key">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" stroke="currentColor" stroke-width="1.2"/>
+                <circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="api-block">
+          <div class="api-provider">
+            <div class="pdot gr"></div>
+            <span class="pname">Groq</span>
+          </div>
+          <div class="api-row">
+            <input class="api-input" id="grInput" type="password" placeholder="gsk_..." spellcheck="false" autocomplete="off"/>
+            <button class="eye-btn" data-t="grInput" title="Hiện/Ẩn key">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" stroke="currentColor" stroke-width="1.2"/>
+                <circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="divline"></div>
+        <button class="save-btn" id="saveBtn">Lưu cài đặt</button>
+        <div class="saved-hint" id="savedHint">✓ Đã lưu</div>
+
+        <div class="back-footer">
+          <button class="back-btn" id="backBtn">
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+              <path d="M7 2L3 6l4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Quay lại
+          </button>
+          <div class="key-links">
+            <a class="klink" href="https://openrouter.ai/keys" target="_blank">
+              <div class="pdot or"></div>OR key
+              <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M2 8L8 2M8 2H4M8 2v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+            </a>
+            <a class="klink" href="https://console.groq.com/keys" target="_blank">
+              <div class="pdot gr"></div>Groq key
+              <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M2 8L8 2M8 2H4M8 2v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-  <div class="B">
-    <div class="P">
-      <div class="P-top">
-        <div class="P-num" id="pct">0<sup>%</sup></div>
-        <div class="P-rt"><div class="P-lbl">TIẾN ĐỘ</div><div class="P-val" id="frac">— / — mục</div></div>
-      </div>
-      <div class="P-track"><div class="P-fill" id="fill"></div></div>
-      <div class="P-tags">
-        <div class="P-tag" id="tag-v">Video</div>
-        <div class="P-tag" id="tag-q">Quiz</div>
-        <div class="P-tag" id="tag-h">Bài tập</div>
-      </div>
-    </div>
-    <div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-        <span class="A-lbl" style="margin-bottom:0;">AI PROVIDER</span>
-        <select class="A-sel" id="ai-sel">
-          <option value="gemini">Gemini (Google)</option>
-          <option value="openai">ChatGPT (OpenAI)</option>
-          <option value="claude">Claude (Anthropic)</option>
-        </select>
-      </div>
-      <div class="A-row">
-        <input type="password" spellcheck="false" class="A-inp" id="api-inp" placeholder="Nhập API key...">
-        <button class="A-btn" id="api-btn">LƯU</button>
-      </div>
-    </div>
-  </div>
-  <div class="F">
-    <div class="F-left">PTIT LMS</div>
-    <div class="F-right">
-      <div class="F-ver">v3.6</div>
-      <div class="F-grip" id="grip" title="Kéo để resize">${GRIP_SVG}</div>
-    </div>
-  </div>
-  <div class="RZ RZ-e" data-d="e"></div>
-  <div class="RZ RZ-s" data-d="s"></div>
-  <div class="RZ RZ-se" data-d="se"></div>
-  <div class="RZ RZ-w" data-d="w"></div>
+  <button class="mini-dock" id="miniDock" title="Mở lại LMSX">
+    <span class="mini-dot"></span>
+    <span class="mini-label">LMSX</span>
+  </button>
 </div>
-<div class="FAB" id="fab">${BOLT_SVG}</div>
-<div class="TT" id="toasts"></div>
 `;
