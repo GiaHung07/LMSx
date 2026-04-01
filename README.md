@@ -37,7 +37,7 @@ LMSX v3.6 là Chrome Extension Manifest V3 được viết lại hoàn toàn the
 Video (x4) ──▶ Quiz (AI) ──▶ Chuyển bài ──▶ lặp lại
 ```
 
-Hệ thống dùng **Shadow DOM** để cách ly UI hoàn toàn khỏi trang LMS, **AES-GCM** để mã hoá session token, và **Gemini API** để giải trắc nghiệm chính xác cao.
+Hệ thống dùng **Shadow DOM** để cách ly UI hoàn toàn khỏi trang LMS, **AES-GCM** để mã hoá session token, và **OpenRouter/Groq API** (Llama 3.3 70B) để giải trắc nghiệm chính xác cao.
 
 ---
 
@@ -46,7 +46,7 @@ Hệ thống dùng **Shadow DOM** để cách ly UI hoàn toàn khỏi trang LMS
 | Module | Mô tả |
 |---|---|
 | `automation/video.js` | Autoplay muted, khoá tốc độ **4×**, phát hiện >98% để chuyển bài |
-| `automation/quiz.js` | Scrape câu hỏi → gửi **Gemini 2.5 Flash** → parse JSON → tự click đáp án |
+| `automation/quiz.js` | Scrape câu hỏi → gửi **OpenRouter/Groq** (Llama 3.3 70B) → parse JSON → tự click đáp án |
 | `automation/navigator.js` | Dò nút chuyển slide/bài học, xử lý SPA navigation |
 | `stealth/bypass.js` | Vô hiệu hoá chặn Copy/Cut/Select/ContextMenu của OpenEdX |
 | `ui/panel.js` | Floating panel **Shadow DOM** — drag, resize, minimize thành FAB |
