@@ -219,6 +219,7 @@ Chạy `node build.js`.
 
 > Dự án phục vụ mục đích cá nhân để tối ưu thời gian học.
 
+- AI không đảm bảo đúng 100%, nhưng thường đủ để qua
 - Không phân phối lại dưới hình thức thương mại
 - Tác giả không chịu trách nhiệm nếu LMS ghi nhận hành vi bất thường
 - Dữ liệu nhạy cảm được lưu cục bộ
