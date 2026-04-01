@@ -353,8 +353,8 @@ async function solveQuiz() {
     S.runtime.quiz.skipAiForRun = false;
     updateStats({ quizzesDetected: S.stats.quizzesDetected + 1 });
 
-    const forceBatchAi = true;
-    if (forceBatchAi && !hasConfiguredAiKey()) {
+    const forceBatchAi = false;
+    if (!hasConfiguredAiKey()) {
         return handleMissingAiKeyForQuiz();
     }
     S.logger?.info('quiz', 'mode', forceBatchAi ? 'AI-first mode: copy -> batch AI -> fill' : 'Cache-first mode');
@@ -376,10 +376,22 @@ async function solveQuiz() {
     if (missingCandidates.length > 0) {
         if (!S.runtime.active) return { ok: false, waitingUser: true, reason: 'automation-stopped' };
         S.logger?.info('quiz', 'batch', `Gửi ${missingCandidates.length}/${questions.length} câu cần AI giải`);
-        const batchResults = await resolveAnswersBatchViaAI(missingCandidates);
-        if (batchResults) {
+        const aggregatedResults = [];
+        for (let cursor = 0; cursor < missingCandidates.length; cursor += AI_BATCH_SIZE) {
+            const chunk = missingCandidates.slice(cursor, cursor + AI_BATCH_SIZE);
+            const batchResults = await resolveAnswersBatchViaAI(chunk);
+            if (!batchResults) {
+                aggregatedResults.length = 0;
+                break;
+            }
+            aggregatedResults.push(...batchResults);
+            if (cursor + AI_BATCH_SIZE < missingCandidates.length) {
+                await humanDelay(900, 1400);
+            }
+        }
+        if (aggregatedResults.length) {
             let cachedCount = 0;
-            batchResults.forEach((res, idx) => {
+            aggregatedResults.forEach((res, idx) => {
                 if (res) {
                     const qHash = missingCandidates[idx].questionHash;
                     const qIndex = missingCandidates[idx].index;

@@ -1,7 +1,7 @@
 // content.js - LMSX build
 (function () {
     'use strict';
-    const __LMSX_BUILD_STAMP__ = "2026-04-01T16:27:13.968Z";
+    const __LMSX_BUILD_STAMP__ = "2026-04-01T17:58:35.543Z";
 
     // -- main.js --
     const LMSX_VERSION = '3.6';
@@ -137,11 +137,11 @@
         uiPrefs: 'lmsx_ui_prefs',
         cache: 'lmsx_cache',
     };
-
+    
     const AI_PROVIDERS = ['groq'];
     const STATE_VALUES = ['idle', 'detecting-page', 'ready', 'running-video', 'waiting-ai', 'running-quiz', 'waiting-user', 'paused', 'error', 'completed'];
     const RUNNER_MAX_RETRIES = 3;
-
+    
     function createDefaultSettings() {
         return {
             schemaVersion: STORAGE_SCHEMA_VERSION,
@@ -165,7 +165,7 @@
             },
         };
     }
-
+    
     function createDefaultRuntime() {
         return {
             active: false,
@@ -216,7 +216,7 @@
             logs: [],
         };
     }
-
+    
     function createDefaultStats() {
         return {
             sessionStartedAt: nowIso(),
@@ -228,7 +228,7 @@
             errors: 0,
         };
     }
-
+    
     function createDefaultUiPrefs() {
         return {
             layoutVersion: UI_LAYOUT_VERSION,
@@ -243,15 +243,15 @@
             drawerOpen: false,
         };
     }
-
+    
     function shallowClone(value) {
         return JSON.parse(JSON.stringify(value));
     }
-
+    
     function normalizeProvider(value) {
         return AI_PROVIDERS.includes(value) ? value : 'groq';
     }
-
+    
     function normalizeSettings(input) {
         const defaults = createDefaultSettings();
         const value = input && typeof input === 'object' ? input : {};
@@ -278,7 +278,7 @@
             },
         };
     }
-
+    
     function normalizeRunner(input) {
         const defaults = createDefaultRuntime().runner;
         const value = input && typeof input === 'object' ? input : {};
@@ -292,7 +292,7 @@
             lastRunAt: Number(value.lastRunAt) || defaults.lastRunAt,
         };
     }
-
+    
     function normalizeRuntime(input) {
         const defaults = createDefaultRuntime();
         const value = input && typeof input === 'object' ? input : {};
@@ -333,7 +333,7 @@
             logs: Array.isArray(value.logs) ? value.logs.slice(-40) : [],
         };
     }
-
+    
     function normalizeStats(input) {
         const defaults = createDefaultStats();
         const value = input && typeof input === 'object' ? input : {};
@@ -347,7 +347,7 @@
             errors: clamp(Number(value.errors) || 0, 0, 999999),
         };
     }
-
+    
     function normalizeUiPrefs(input) {
         const defaults = createDefaultUiPrefs();
         const value = input && typeof input === 'object' ? input : {};
@@ -366,7 +366,7 @@
             drawerOpen: value.drawerOpen === true,
         };
     }
-
+    
     function normalizeCacheRecord(input, questionHash = '') {
         if (!input || typeof input !== 'object') return null;
         const selectedIndex = Number.isInteger(input.selectedIndex) ? input.selectedIndex : null;
@@ -382,7 +382,7 @@
             updatedAt: Number(input.updatedAt) || nowTs(),
         };
     }
-
+    
     function normalizeCache(input) {
         const cache = {};
         const value = input && typeof input === 'object' ? input : {};
@@ -392,7 +392,7 @@
         });
         return cache;
     }
-
+    
     function makeQuestionHash(questionText, choices = []) {
         const raw = `${normalizeText(questionText).toLowerCase()}||${choices.map(choice => normalizeText(choice).toLowerCase()).join('||')}`;
         let hash = 2166136261;
@@ -402,7 +402,7 @@
         }
         return `q_${(hash >>> 0).toString(36)}`;
     }
-
+    
     function makeCacheRecord(questionHash, selectedIndex, selectedValue, source, extra = {}) {
         return normalizeCacheRecord({
             questionHash,
@@ -414,7 +414,7 @@
             updatedAt: extra.updatedAt || nowTs(),
         }, questionHash);
     }
-
+    
     function normalizeAnswerSet(input) {
         if (!input || typeof input !== 'object') return null;
         const answers = Array.isArray(input.answers) ? input.answers : [];
@@ -426,8 +426,8 @@
             importedAt: Number(input.importedAt) || nowTs(),
         };
     }
-
-
+    
+    
 
 
     // -- storage/adapter.js --
@@ -1052,11 +1052,11 @@
         if (geminiMatch) return geminiMatch[0];
         return text.replace(/\s+/g, '');
     }
-
+    
     function pickBestAnswerCandidate(candidates) {
         const valid = candidates.filter(Boolean);
         if (!valid.length) return null;
-
+    
         const scoreByIndex = new Map();
         valid.forEach(candidate => {
             const idx = candidate.selectedIndex;
@@ -1066,7 +1066,7 @@
             current.confidence = Math.max(current.confidence, Number(candidate.confidence || 0));
             scoreByIndex.set(idx, current);
         });
-
+    
         if (!scoreByIndex.size) return valid[0];
         let bestIndex = null;
         let bestCount = -1;
@@ -1078,28 +1078,31 @@
                 bestConfidence = entry.confidence;
             }
         });
-
+    
         return valid
             .filter(candidate => candidate.selectedIndex === bestIndex)
             .sort((a, b) => Number(b.confidence || 0) - Number(a.confidence || 0))[0] || valid[0];
     }
-
+    
     function sanitizeAiKeyInput(rawValue = '') {
         return extractAiKeyCandidate(rawValue).trim();
     }
+
+    const AI_BATCH_SIZE = 4;
+    const AI_RECHECK_LIMIT = 0;
 
     function isLikelyApiKey(provider, value = '') {
         const v = String(value || '').trim();
         if (provider === 'groq') return v.startsWith('gsk_');
         return false;
     }
-
+    
     async function testAiKey(provider, rawKey) {
         const key = sanitizeAiKeyInput(rawKey);
         if (!isLikelyApiKey(provider, key)) {
             return { ok: false, status: 'invalid', message: 'API key không đúng định dạng' };
         }
-
+    
         try {
             if (provider !== 'groq') {
                 return { ok: false, status: 'invalid', message: 'Provider không được hỗ trợ' };
@@ -1108,10 +1111,10 @@
                 method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
                 body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: 'hi' }], max_tokens: 5 }),
             });
-
+    
             const data = await res.json().catch(() => ({}));
             if (res.ok && !data.error) return { ok: true, status: 'ok', message: 'Key hoạt động bình thường' };
-
+    
             const message = data.error?.message || `HTTP ${res.status}`;
             if (isPermanentAiError(message)) {
                 const expired = /expired/i.test(message);
@@ -1128,17 +1131,17 @@
     function getAiProviderConfig() {
         return { provider: 'groq', key: S.settings?.ai?.keys?.groq || '' };
     }
-
+    
     function hasConfiguredAiKey() {
         const { provider, key } = getAiProviderConfig();
         const normalizedKey = sanitizeAiKeyInput(key);
         return !!normalizedKey && isLikelyApiKey(provider, normalizedKey);
     }
-
+    
     function getMissingAiKeyMessage() {
         return 'Thiếu Groq API key. Hãy mở Cài đặt và nhập key.';
     }
-
+    
     function isProviderBlocked(provider, key) {
         const fingerprint = getAiBlockFingerprint(provider, key);
         const blocked = S.runtime?._aiBlocked;
@@ -1149,11 +1152,11 @@
         if (!blocked.retryAt) return true;
         return false;
     }
-
+    
     function getAiBlockFingerprint(provider, key) {
         return `${provider}:${String(key || '').slice(-8)}`;
     }
-
+    
     function clearAiBlockIfKeyChanged(provider, key) {
         const nextFingerprint = getAiBlockFingerprint(provider, key);
         if (!S.runtime?._aiBlocked) return;
@@ -1165,18 +1168,18 @@
             delete S.runtime._aiBlocked;
         }
     }
-
+    
     function parseRetryAfterMs(message = '') {
         const match = String(message || '').match(/retry in\s+([0-9]+(?:\.[0-9]+)?)s/i);
         if (!match) return 0;
         return Math.max(0, Math.ceil(Number(match[1]) * 1000));
     }
-
+    
     function normalizeAiErrorMessage(error) {
         const rawMessage = String(error?.message || error || '').trim();
         const rawName = String(error?.name || '').trim();
         const text = `${rawName} ${rawMessage}`.toLowerCase();
-
+    
         if (!text) return 'Lỗi kết nối AI';
         if (
             text.includes('aborterror') ||
@@ -1192,7 +1195,7 @@
         }
         return rawMessage || 'Lỗi kết nối AI';
     }
-
+    
     function isPermanentAiError(message = '') {
         const text = String(message || '').toLowerCase();
         return (
@@ -1205,7 +1208,7 @@
             text.includes('invalid argument')
         );
     }
-
+    
     function isTemporaryAiThrottle(message = '') {
         const text = String(message || '').toLowerCase();
         return (
@@ -1220,7 +1223,7 @@
             text.includes('resource has been exhausted')
         );
     }
-
+    
     function handlePermanentAiFailure(provider, key, message) {
         S.runtime._aiBlocked = {
             provider,
@@ -1230,7 +1233,7 @@
         };
         clearRunnerTimer?.();
         setActive(false, 'fatal-ai-error');
-
+    
         const PROVIDER_LABELS = { groq: 'Groq' };
         const providerLabel = PROVIDER_LABELS[provider] || provider;
         let vnMessage = 'Key không hợp lệ';
@@ -1242,7 +1245,7 @@
         } else if (text.includes('permission') || text.includes('unauthorized')) {
             vnMessage = 'Không có quyền truy cập';
         }
-
+    
         const friendlyError = `Lỗi ${providerLabel}: ${vnMessage}`;
         S.ui?.toast?.(friendlyError, 'error', 6000);
         setState('waiting-user', {
@@ -1250,7 +1253,7 @@
             detail: friendlyError,
         });
     }
-
+    
     function handleTemporaryAiThrottle(provider, key, message) {
         const PROVIDER_LABELS = { groq: 'Groq' };
         const providerLabel = PROVIDER_LABELS[provider] || provider;
@@ -1273,7 +1276,7 @@
             detail: friendlyError,
         });
     }
-
+    
     const SUBJECT_PROFILES = [
         {
             id: 'marxist_political_economy',
@@ -1339,7 +1342,7 @@
             ],
         },
     ];
-
+    
     function getRelevantPageTexts() {
         const selectors = [
             'title',
@@ -1353,12 +1356,12 @@
             '[class*="lesson"]',
         ];
         const values = new Set();
-
+    
         const pushText = text => {
             const normalized = normalizeText(text || '');
             if (normalized.length >= 4) values.add(normalized.slice(0, 240));
         };
-
+    
         pushText(document.title || '');
         selectors.forEach(selector => {
             document.querySelectorAll(selector).forEach(node => {
@@ -1366,10 +1369,10 @@
                 pushText(node.innerText || node.textContent || '');
             });
         });
-
+    
         return [...values].slice(0, 16);
     }
-
+    
     function detectSubjectProfile(question = '', choices = [], extraTexts = []) {
         const haystack = [
             question,
@@ -1377,7 +1380,7 @@
             ...extraTexts,
             ...getRelevantPageTexts(),
         ].join('\n').toLowerCase();
-
+    
         let best = SUBJECT_PROFILES[SUBJECT_PROFILES.length - 1];
         let bestScore = -1;
         for (const profile of SUBJECT_PROFILES) {
@@ -1389,94 +1392,82 @@
         }
         return best;
     }
-
+    
     function buildSubjectContextBlock(profile, question, choices, extraTexts = []) {
-        const pageTexts = [...new Set([...extraTexts, ...getRelevantPageTexts()])].slice(0, 6);
+        const pageTexts = [...new Set([...extraTexts, ...getRelevantPageTexts()])].slice(0, 2);
         const contextLines = [];
-        contextLines.push(`Subject guess: ${profile.label}`);
+        contextLines.push(`Subject: ${profile.label}`);
         if (pageTexts.length) {
-            contextLines.push(`Detected page context: ${pageTexts.join(' | ')}`);
+            contextLines.push(`Context: ${pageTexts.join(' | ')}`);
         }
-        contextLines.push(`Question focus: ${question}`);
-        contextLines.push(`Choices count: ${choices.length}`);
+        contextLines.push(`Choices: ${choices.length}`);
         return contextLines.join('\n');
     }
 
     function buildSharedPromptRules(profile) {
-        const guidanceLines = profile.guidance.map(line => `- ${line}`).join('\n');
-        return `You are an expert assistant for Vietnamese university multiple-choice exams.
-    Your task is to answer according to the correct academic meaning of the specific subject, not according to casual everyday wording.
+        const guidanceLines = profile.guidance.slice(0, 2).map(line => `- ${line}`).join('\n');
+        return `Answer Vietnamese university multiple-choice questions according to the textbook meaning.
 
     Subject-specific guidance:
     ${guidanceLines}
 
-    General reasoning rules:
-    - First identify the exact concept, law, category, figure, period, or definition being asked.
-    - Watch carefully for trap words such as "không", "ngoại trừ", "sai", "đúng nhất", "đầy đủ nhất", "bao gồm", "mọi", "tất cả", "chỉ", "duy nhất".
-    - If several options seem plausible, choose the one that is most standard, most textbook-accurate, and most complete.
-    - Reject options that are broadly true in life but not the formal textbook definition.
-    - selectedValue must exactly match one option text from the provided choices.
+    Rules:
+    - Pay special attention to trap words: "không", "ngoại trừ", "sai", "đúng nhất", "đầy đủ nhất", "bao gồm", "mọi", "tất cả", "chỉ", "duy nhất".
+    - If multiple options look plausible, choose the most standard and complete textbook answer.
+    - Return valid JSON only.
+    - Do not explain.
 
-    Strict output rules:
-    - Return ONLY one raw JSON object.
-    - No markdown, no code fences, no explanation outside JSON.
-    - selectedIndex must be a 0-based integer matching one provided option.
-    - selectedValue must copy the exact option text.
-    - reason must be short and specific.
-
-    Return exactly this schema:
-    {"selectedIndex": <integer>, "selectedValue": "<exact choice text>", "confidence": 0.95, "reason": "<short rationale>"}`;
+    Return ONLY valid JSON: {"i":0}`;
     }
-
+    
     function buildAiPrompt(question, choices, extraTexts = []) {
         const profile = detectSubjectProfile(question, choices, extraTexts);
         return `${buildSharedPromptRules(profile)}
-
+    
     ${buildSubjectContextBlock(profile, question, choices, extraTexts)}
-
+    
     Question:
     ${question}
-
+    
     Choices:
     ${choices.map((choice, index) => `[${index}] ${choice}`).join('\n')}`;
     }
-
+    
     function buildAiVerifyPrompt(question, choices, candidateIndex, extraTexts = []) {
         const profile = detectSubjectProfile(question, choices, extraTexts);
         return `${buildSharedPromptRules(profile)}
 
-    You are validating a previously selected answer.
-    - Candidate option to verify: [${candidateIndex}]
-    - Check whether it is truly the best answer according to the textbook meaning of ${profile.label}.
-    - If it is not the best answer, replace it with the correct one.
+    Verify the current candidate [${candidateIndex}].
+    If it is not the best textbook answer, return the better index.
 
     ${buildSubjectContextBlock(profile, question, choices, extraTexts)}
-
+    
     Question:
     ${question}
-
+    
     Choices:
     ${choices.map((choice, index) => `[${index}] ${choice}`).join('\n')}`;
     }
-
+    
     function normalizeAiAnswer(raw, questionHash, choices, provider) {
+        if (typeof raw === 'number' && Number.isFinite(raw)) {
+            raw = { i: Math.round(raw) };
+        }
         if (!raw || typeof raw !== 'object') {
             S.logger?.warn('ai', 'normalize:fail', 'raw is not object', { rawType: typeof raw, raw: String(raw).slice(0, 200) });
             return null;
         }
-        const rawIndex = raw?.selectedIndex ?? raw?.index;
+        const rawIndex = raw?.i ?? raw?.selectedIndex ?? raw?.index;
         const selectedIndex = Number.isInteger(rawIndex) ? rawIndex : (typeof rawIndex === 'number' ? Math.round(rawIndex) : null);
         const selectedValue = typeof raw?.selectedValue === 'string' ? normalizeText(raw.selectedValue) : '';
-        // AI often returns 0 confidence from template copying; force minimum 0.85 if it gave us an answer
         let confidence = clamp(Number(raw?.confidence) || 0, 0, 1);
         const hasValue = selectedIndex !== null || !!selectedValue;
         if (!hasValue) {
             S.logger?.warn('ai', 'normalize:empty', 'no selectedIndex or selectedValue', { raw: JSON.stringify(raw).slice(0, 200) });
             return null;
         }
-        // If the AI returned an answer but confidence is suspiciously low (e.g. copied schema), boost it
         if (confidence < 0.5 && hasValue) {
-            confidence = 0.85;
+            confidence = 0.9;
         }
         return normalizeCacheRecord({
             questionHash,
@@ -1488,9 +1479,9 @@
             updatedAt: nowTs(),
         }, questionHash);
     }
-
-
-
+    
+    
+    
     async function fetchWithTimeout(url, options, timeoutMs = 30000) {
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -1503,15 +1494,16 @@
             clearTimeout(id);
         }
     }
-
+    
     async function callGroqProvider(key, prompt) {
         const response = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
             body: JSON.stringify({
                 model: 'llama-3.3-70b-versatile',
-                temperature: 0.1,
+                temperature: 0,
                 response_format: { type: 'json_object' },
+                max_completion_tokens: 24,
                 messages: [{ role: 'user', content: prompt }],
             }),
         });
@@ -1519,7 +1511,7 @@
         if (data.error) throw new Error(data.error.message || 'Groq request failed');
         return safeJsonParse(data.choices?.[0]?.message?.content || '');
     }
-
+    
     async function resolveAnswerViaAI(questionRecord) {
         const { provider, key } = getAiProviderConfig();
         if (!key) return null;
@@ -1527,7 +1519,7 @@
         if (isProviderBlocked(provider, key)) return null;
         return resolveWithProvider(provider, key, questionRecord);
     }
-
+    
     async function resolveWithProvider(provider, key, questionRecord, options = {}) {
         const silent = options.silent === true;
         const prompt = options.promptOverride || buildAiPrompt(
@@ -1560,23 +1552,20 @@
             return null;
         }
     }
-
+    
     function buildAiBatchPrompt(questionsList) {
         const extraTexts = questionsList.flatMap(q => [q.questionText, ...(q.choiceTexts || [])]).slice(0, 40);
         const profile = detectSubjectProfile('', [], extraTexts);
         let block = `${buildSharedPromptRules(profile)}
 
-    You will answer a batch of ${questionsList.length} multiple-choice questions from the same course context.
-    Subject focus for this batch: ${profile.label}
+    Answer ${questionsList.length} questions in order.
+    Return ONLY valid JSON with exactly one key "a".
+    Schema: {"a":[0,1,2]}
+    - "a" must be an array of exactly ${questionsList.length} integers.
+    - Each integer must be the selected 0-based option index for the matching question.
 
-    Batch output rules:
-    - Return ONLY one JSON object.
-    - The JSON must contain an "answers" array with EXACTLY ${questionsList.length} elements in the same order as the questions.
-    - Each answer object must use this schema:
-    {"selectedIndex": <0-based integer>, "selectedValue": "<exact option text>", "confidence": 0.95, "reason": "<very short rationale>"}
-
-    Detected page context:
-    ${getRelevantPageTexts().slice(0, 6).join(' | ') || 'N/A'}
+    Subject: ${profile.label}
+    Context: ${getRelevantPageTexts().slice(0, 2).join(' | ') || 'N/A'}
 
     `;
         questionsList.forEach((q, i) => {
@@ -1588,7 +1577,7 @@
         });
         return block;
     }
-
+    
     function shouldRecheckBatchAnswer(questionRecord, answerRecord) {
         if (!questionRecord || !answerRecord) return false;
         const question = normalizeText(questionRecord.questionText || '').toLowerCase();
@@ -1598,24 +1587,25 @@
         const lowConfidence = Number(answerRecord.confidence || 0) < 0.93;
         return trapQuestion || riskyOption || lowConfidence;
     }
-
+    
     async function refineRiskyBatchAnswers(questionRecords, results, provider, key) {
         const riskyIndexes = [];
         for (let i = 0; i < questionRecords.length; i++) {
             if (shouldRecheckBatchAnswer(questionRecords[i], results[i])) riskyIndexes.push(i);
         }
         if (!riskyIndexes.length) return results;
-
-        const maxRechecks = Math.min(3, riskyIndexes.length);
+    
+        const maxRechecks = Math.min(AI_RECHECK_LIMIT, riskyIndexes.length);
+        if (!maxRechecks) return results;
         const recheckProvider = provider;
         const recheckKey = key;
         const next = [...results];
-
+    
         S.logger?.info('ai', 'batch:recheck:start', `Rechecking ${maxRechecks}/${riskyIndexes.length} risky answers`, {
             provider: recheckProvider,
             riskyIndexes: riskyIndexes.slice(0, maxRechecks).map(i => i + 1),
         });
-
+    
         for (const idx of riskyIndexes.slice(0, maxRechecks)) {
             const questionRecord = questionRecords[idx];
             const current = next[idx];
@@ -1644,10 +1634,10 @@
                 });
             }
         }
-
+    
         return next;
     }
-
+    
     async function resolveAnswersBatchViaAI(questionRecords) {
         const { provider, key } = getAiProviderConfig();
         if (!key || questionRecords.length === 0) return null;
@@ -1655,7 +1645,7 @@
         if (isProviderBlocked(provider, key)) return null;
         return resolveBatchWithProvider(provider, key, questionRecords);
     }
-
+    
     async function resolveBatchWithProvider(provider, key, questionRecords) {
         const prompt = buildAiBatchPrompt(questionRecords);
         S.logger?.info('ai', 'request', `Batch asking ${provider} ${questionRecords.length} questions`);
@@ -1677,17 +1667,19 @@
         setState('waiting-ai', { capability: 'quiz', detail: `Đang hỏi AI ${questionRecords.length} câu cùng lúc` });
         try {
             const raw = await callGroqProvider(key, prompt);
-
+    
             S.logger?.info('ai', 'batch:raw', `Raw batch response type=${typeof raw}`, { rawPreview: JSON.stringify(raw).slice(0, 800) });
             S.logger?.debug('ai', 'batch:raw:full', `Full response for debug`, { raw: JSON.stringify(raw) });
-
+    
             let answers = null;
             S.logger?.debug('ai', 'batch:parse:check', `Checking response structure`, { 
                 hasAnswersArray: Array.isArray(raw?.answers), 
                 isArray: Array.isArray(raw),
                 keys: raw && typeof raw === 'object' ? Object.keys(raw) : 'N/A'
             });
-            if (Array.isArray(raw?.answers)) {
+            if (Array.isArray(raw?.a)) {
+                answers = raw.a;
+            } else if (Array.isArray(raw?.answers)) {
                 answers = raw.answers;
             } else if (Array.isArray(raw)) {
                 answers = raw;
@@ -1698,7 +1690,7 @@
                     S.logger?.info('ai', 'batch:fallback', `Tìm thấy mảng đáp án ở key khác "answers"`, { count: answers.length });
                 }
             }
-
+    
             if (!answers || answers.length === 0) {
                 S.logger?.warn('ai', 'batch:parse-fail', 'Could not extract answers array from response', { 
                     rawKeys: raw ? Object.keys(raw) : 'null', 
@@ -1707,7 +1699,7 @@
                 });
                 throw new Error('Phản hồi AI không chứa mảng đáp án');
             }
-
+    
             S.logger?.info('ai', 'batch:parsed', `Got ${answers.length} answers for ${questionRecords.length} questions`);
             
             // DEBUG: Check each answer before processing
@@ -1717,19 +1709,19 @@
                     ansPreview: ans ? JSON.stringify(ans).slice(0, 100) : 'null' 
                 });
             });
-
+    
             while (answers.length < questionRecords.length) {
                 answers.push(null);
             }
-
+    
             const results = questionRecords.map((qr, idx) => {
                 const ans = answers[idx];
-                if (!qr || !ans) {
+                if (!qr || ans === null || ans === undefined) {
                     S.logger?.warn('ai', 'batch:item-null', `Answer ${idx} is null/missing`, { hasQr: !!qr, hasAns: !!ans, questionHash: qr?.questionHash?.slice(0, 20) });
                     return null;
                 }
                 S.logger?.debug('ai', 'batch:normalize:start', `Normalizing Q${idx}`, { 
-                    ansKeys: Object.keys(ans || {}),
+                    ansKeys: typeof ans === 'object' && ans ? Object.keys(ans) : [],
                     questionHash: qr.questionHash?.slice(0, 20),
                     choiceCount: qr.choiceTexts?.length 
                 });
@@ -1741,11 +1733,11 @@
                 }
                 return normalized;
             });
-
+    
             const refinedResults = await refineRiskyBatchAnswers(questionRecords, results, provider, key);
             const validCount = refinedResults.filter(Boolean).length;
             S.logger?.info('ai', 'batch:result', `Normalized ${validCount}/${questionRecords.length} answers successfully`);
-
+    
             const selectedIndexCounts = {};
             refinedResults.filter(Boolean).forEach(record => {
                 const keyName = Number.isInteger(record.selectedIndex) ? String(record.selectedIndex) : 'null';
@@ -1755,14 +1747,14 @@
                 total: validCount,
                 distribution: selectedIndexCounts,
             });
-
+    
             const maxBucket = Math.max(0, ...Object.values(selectedIndexCounts));
             if (validCount >= 5 && maxBucket >= Math.ceil(validCount * 0.8)) {
                 S.logger?.warn('ai', 'batch:suspicious', 'Batch answers are heavily concentrated at one index', {
                     distribution: selectedIndexCounts,
                 });
             }
-
+    
             return validCount > 0 ? refinedResults : null;
         } catch (error) {
             const message = normalizeAiErrorMessage(error);
@@ -1978,7 +1970,7 @@
               </svg>
             </button>
           </div>
-
+    
           <div class="collapsible" id="logSection" style="max-height:200px">
             <div class="log-wrap" id="logWrap">
               <div class="log-line vis">
@@ -1987,7 +1979,7 @@
               </div>
             </div>
           </div>
-
+    
           <div class="sep" id="sepEl"></div>
           <div class="footer" id="footerEl">
             <div class="status-left">
@@ -2000,7 +1992,7 @@
             </div>
           </div>
         </div>
-
+    
         <div class="face back">
           <div class="titlebar">
             <div class="dots">
@@ -2011,10 +2003,10 @@
             <div class="ptitle">Cài đặt</div>
             <div style="width:17px"></div>
           </div>
-
+    
           <div class="back-body">
             <div class="section-label">API KEYS</div>
-
+    
             <div class="api-block">
               <div class="api-provider">
                 <div class="pdot gr"></div>
@@ -2030,11 +2022,11 @@
                 </button>
               </div>
             </div>
-
+    
             <div class="divline"></div>
             <button class="save-btn" id="saveBtn">Lưu cài đặt</button>
             <div class="saved-hint" id="savedHint">✓ Đã lưu</div>
-
+    
             <div class="back-footer">
               <button class="back-btn" id="backBtn">
                 <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
@@ -2066,7 +2058,7 @@
         host.id = '__lmsx_root__';
         host.style.cssText = 'position:fixed!important;top:0!important;left:0!important;width:0!important;height:0!important;overflow:visible!important;z-index:2147483647!important;';
         S.shadow = host.attachShadow({ mode: 'closed' });
-
+    
         const style = document.createElement('style');
         const fontUrl = globalThis.chrome?.runtime?.getURL?.('assets/fonts/JetBrainsMono-Regular.woff2') || '';
         const fontFace = fontUrl
@@ -2074,15 +2066,15 @@
             : '';
         style.textContent = `${fontFace}\n${CSS}`;
         S.shadow.appendChild(style);
-
+    
         const wrapper = document.createElement('div');
         wrapper.innerHTML = HTML;
         while (wrapper.firstChild) S.shadow.appendChild(wrapper.firstChild);
-
+    
         document.documentElement.appendChild(host);
         return S.shadow;
     }
-
+    
     function initPanel(root) {
         const $ = id => root.getElementById(id);
         const panel = $('P');
@@ -2102,7 +2094,7 @@
             saveBtn: $('saveBtn'),
             savedHint: $('savedHint'),
         };
-
+    
         let dragging = false;
         let sx = 0;
         let sy = 0;
@@ -2110,7 +2102,7 @@
         let st = 0;
         let collapsed = false;
         let hidden = false;
-
+    
         function setDockedState(nextHidden, persist = true) {
             hidden = nextHidden === true;
             panel.classList.toggle('docked', hidden);
@@ -2118,7 +2110,7 @@
                 updateUiPrefs({ panel: { minimized: hidden, closed: false } });
             }
         }
-
+    
         function applyPanelPrefs() {
             const prefs = S.uiPrefs.panel;
             const width = clamp(Number(prefs.width) || 300, 300, 300);
@@ -2134,7 +2126,7 @@
                 panel.style.left = 'auto';
             }
         }
-
+    
         function clampPanel() {
             const rect = panel.getBoundingClientRect();
             const nextLeft = clamp(rect.left, 0, Math.max(0, window.innerWidth - rect.width));
@@ -2144,14 +2136,14 @@
             panel.style.right = 'auto';
             updateUiPrefs({ panel: { left: nextLeft, top: nextTop, width: rect.width, height: rect.height, minimized: false, closed: false } });
         }
-
+    
         function startDragging(event) {
             if (event.target.closest('.dots') || event.target.closest('button') || event.target.closest('a') || event.target.closest('input')) return;
             
             const rect = event.currentTarget.getBoundingClientRect();
             const offsetX = event.clientX - rect.left;
             if (offsetX < 65 || offsetX > rect.width - 45) return;
-
+    
             event.preventDefault();
             dragging = true;
             panel.classList.add('is-dragging');
@@ -2160,11 +2152,11 @@
             sx = event.clientX;
             sy = event.clientY;
         }
-
+    
         panel.querySelectorAll('.titlebar').forEach(node => {
             node.addEventListener('mousedown', startDragging);
         });
-
+    
         document.addEventListener('mousemove', event => {
             if (!dragging) return;
             const nextLeft = clamp(sl + (event.clientX - sx), 0, Math.max(0, window.innerWidth - panel.offsetWidth));
@@ -2179,7 +2171,7 @@
             panel.classList.remove('is-dragging');
             clampPanel();
         });
-
+    
         function setStatus(state, label) {
             if (ids.liveDot) ids.liveDot.className = `live-dot ${state}`;
             if (ids.slabel) {
@@ -2187,21 +2179,21 @@
                 ids.slabel.textContent = label || state;
             }
         }
-
+    
         function logTypeFromLevel(level) {
             if (level === 'error') return 'err';
             if (level === 'warn') return 'spin';
             if (level === 'info') return 'ok';
             return 'd';
         }
-
+    
         function mapToPhaseLog(entry) {
             if (!entry || typeof entry !== 'object') return null;
             const moduleName = String(entry.module || '');
             const eventName = String(entry.event || '');
             const level = String(entry.level || '');
             const detail = sanitizePanelMessage(entry.detail || '');
-
+    
             if (moduleName === 'quiz' && eventName === 'payload:summary') {
                 return { type: 'spin', text: 'Đọc câu hỏi...' };
             }
@@ -2226,25 +2218,25 @@
             if (moduleName === 'video' && eventName === 'play:done') {
                 return { type: 'ok', text: 'Video xong' };
             }
-
+    
             if (moduleName === 'ui' && eventName === 'toast' && detail) {
                 return { type: level === 'error' ? 'err' : level === 'warn' ? 'spin' : 'ok', text: detail };
             }
-
+    
             if ((level === 'warn' || level === 'error') && detail) {
                 return { type: level === 'error' ? 'err' : 'spin', text: detail };
             }
-
+    
             return null;
         }
-
+    
         function sanitizePanelMessage(value) {
             const text = String(value || '').replace(/\s+/g, ' ').trim();
             if (!text) return '';
             if (/^selected answers before submit/i.test(text)) return '';
             return text.length > 120 ? `${text.slice(0, 117)}...` : text;
         }
-
+    
         function deriveRuntimePhaseLog() {
             const state = String(S.runtime?.state || '');
             const lastAction = String(S.runtime?.lastAction || '').toLowerCase();
@@ -2253,17 +2245,17 @@
             const caps = S.runtime?.capabilities || {};
             const isQuizStart = caps?.quizStart?.matched;
             const isQuizActive = caps?.quiz?.matched;
-
+    
             // Trang mới / chưa bắt đầu quiz: không hiển thị pha quiz cũ
             if (state === 'idle' || state === 'detecting-page' || isQuizStart) {
                 if (running) return { type: 'spin', text: 'Đang quét trang...' };
                 return { type: 'ok', text: 'Sẵn sàng' };
             }
-
+    
             if (state === 'completed') return { type: 'ok', text: 'Xong' };
             if (state === 'running-video') return { type: 'spin', text: 'Đang chạy video x4...' };
             if (state === 'waiting-ai') return { type: 'spin', text: 'Gọi AI...' };
-
+    
             // Chỉ hiện pha quiz khi đang thực sự trong quiz
             if (state === 'running-quiz' && isQuizActive) {
                 if (stateDetail.includes('tìm nút nộp')) {
@@ -2276,13 +2268,13 @@
                     return { type: 'spin', text: 'Đang điền đáp án...' };
                 }
             }
-
+    
             if (running && (state === 'ready' || state === 'running-quiz')) {
                 return { type: 'spin', text: 'Đang quét trang...' };
             }
             return null;
         }
-
+    
         function renderLogList() {
             if (!ids.logWrap) return;
             const runtimeLogs = S.runtime.logs || [];
@@ -2294,13 +2286,13 @@
                 if (prev && prev.text === mapped.text) return;
                 phaseLogs.push(mapped);
             });
-
+    
             const runtimePhase = deriveRuntimePhaseLog();
             if (runtimePhase) {
                 const prev = phaseLogs[phaseLogs.length - 1];
                 if (!prev || prev.text !== runtimePhase.text) phaseLogs.push(runtimePhase);
             }
-
+    
             const logs = phaseLogs.slice(-6);
             ids.logWrap.innerHTML = '';
             if (!logs.length) {
@@ -2310,7 +2302,7 @@
                 ids.logWrap.appendChild(line);
                 return;
             }
-
+    
             logs.forEach((entry, index) => {
                 const line = document.createElement('div');
                 const text = escapeHtml(entry.text || '...');
@@ -2321,18 +2313,18 @@
                 ids.logWrap.appendChild(line);
             });
         }
-
+    
         function syncStatus() {
             const running = S.runtime.active && S.runtime.state !== 'paused';
             const done = S.runtime.state === 'completed';
             if (done) setStatus('done', 'done');
             else if (running) setStatus('running', 'running');
             else setStatus('idle', 'idle');
-
+    
             if (ids.statusNote) ids.statusNote.textContent = S.runtime.lastAction || 'Chờ câu hỏi...';
             renderLogList();
         }
-
+    
         function showSavedHint(message = '✓ Đã lưu', options = {}) {
             if (!ids.savedHint) return;
             const autoClose = options.autoClose !== false;
@@ -2345,11 +2337,11 @@
                 }
             }, 1100);
         }
-
+    
         function getChromeStorage() {
             return globalThis.chrome?.storage?.sync || null;
         }
-
+    
         function chromeSyncGet(keys) {
             const storage = getChromeStorage();
             if (!storage) return Promise.resolve({});
@@ -2357,7 +2349,7 @@
                 storage.get(keys, result => resolve(result || {}));
             });
         }
-
+    
         function chromeSyncSet(payload) {
             const storage = getChromeStorage();
             if (!storage) return Promise.resolve();
@@ -2365,44 +2357,44 @@
                 storage.set(payload, () => resolve());
             });
         }
-
+    
         async function loadKeys() {
             const result = await chromeSyncGet(['lmsx_gr_key', 'lmsx_model']);
             const nextGr = sanitizeAiKeyInput(result.lmsx_gr_key || S.settings.ai.keys.groq || '');
             if (ids.grInput) ids.grInput.value = nextGr;
-
+    
             const changed = nextGr !== S.settings.ai.keys.groq || S.settings.ai.provider !== 'groq';
             S.settings.ai.keys.groq = nextGr;
             S.settings.ai.provider = 'groq';
             S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys.groq || '');
             if (changed) await S.storage.saveSettings(S.settings);
         }
-
+    
         function resolveProviderForRun() {
             return 'groq';
         }
-
+    
         async function saveKeys() {
             const grVal = sanitizeAiKeyInput(ids.grInput?.value || '');
-
+    
             if (grVal && !isLikelyApiKey('groq', grVal)) {
                 showSavedHint('✕ Groq key sai định dạng', { autoClose: false });
                 return;
             }
-
+    
             S.settings.ai.keys.groq = grVal;
             S.settings.ai.provider = 'groq';
             S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys.groq || '');
             delete S.runtime._aiBlocked;
             await S.storage.saveSettings(S.settings);
-
+    
             await chromeSyncSet({
                 lmsx_gr_key: grVal,
                 lmsx_model: 'groq',
             });
             showSavedHint('✓ Đã lưu');
         }
-
+    
         async function toggleRun() {
             if (hidden) {
                 setDockedState(false);
@@ -2414,16 +2406,16 @@
                 collapsed = false;
                 ids.logSection?.classList.remove('collapsed');
             }
-
+    
             if (S.runtime.active && S.runtime.state !== 'paused') {
                 stopAutomation('panel:dotG');
                 return;
             }
-
+    
             S.settings.ai.provider = 'groq';
             S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys.groq || '');
             await S.storage.saveSettings(S.settings);
-
+    
             const caps = detectPageCapabilities(true);
             if (caps?.quiz?.matched && !hasConfiguredAiKey()) {
                 const detail = getMissingAiKeyMessage();
@@ -2432,10 +2424,10 @@
                 setState('waiting-user', { capability: 'quiz', detail });
                 return;
             }
-
+    
             startAutomation('panel:dotG');
         }
-
+    
         $('dotR')?.addEventListener('click', () => {
             setDockedState(!hidden);
             if (hidden) {
@@ -2450,26 +2442,26 @@
             if (ids.footerEl) ids.footerEl.style.cssText = '';
             if (!collapsed) ids.logSection?.classList.remove('collapsed');
         });
-
+    
         ids.miniDock?.addEventListener('click', () => {
             setDockedState(false);
             if (ids.sepEl) ids.sepEl.style.display = '';
             if (ids.footerEl) ids.footerEl.style.cssText = '';
             if (!collapsed) ids.logSection?.classList.remove('collapsed');
         });
-
+    
         $('dotY')?.addEventListener('click', () => {
             if (hidden) return;
             collapsed = !collapsed;
             ids.logSection?.classList.toggle('collapsed', collapsed);
         });
-
+    
         $('dotG')?.addEventListener('click', () => { toggleRun(); });
         ids.toggle?.addEventListener('click', () => { toggleRun(); });
-
+    
         $('flipBtn')?.addEventListener('click', () => ids.card?.classList.add('flipped'));
         $('backBtn')?.addEventListener('click', () => ids.card?.classList.remove('flipped'));
-
+    
         panel.querySelectorAll('.eye-btn').forEach(button => {
             button.addEventListener('click', () => {
                 const target = $(button.dataset.t);
@@ -2477,27 +2469,27 @@
                 target.type = target.type === 'password' ? 'text' : 'password';
             });
         });
-
+    
         ids.saveBtn?.addEventListener('click', () => { saveKeys(); });
-
+    
         function toast(message, type = 'info') {
             S.runtime.lastAction = message;
             S.runtime.logs.push({ level: type, module: 'ui', event: 'toast', detail: message, timestamp: nowTs() });
             S.runtime.logs = S.runtime.logs.slice(-40);
             syncStatus();
         }
-
+    
         function sync() {
             if (!S.settings || !S.runtime || !S.uiPrefs) return;
             applyPanelPrefs();
             if (ids.toggle) ids.toggle.classList.toggle('on', S.runtime.active && S.runtime.state !== 'paused');
             syncStatus();
         }
-
+    
         function pushLog() {
             syncStatus();
         }
-
+    
         S.ui = {
             toast,
             pushLog,
@@ -2507,12 +2499,12 @@
                 syncStatus();
             },
         };
-
+    
         applyPanelPrefs();
         loadKeys().finally(() => {
             sync();
         });
-
+    
         addCleanup(() => {
             panel.remove();
         });
@@ -2679,7 +2671,7 @@
         const caps = detectPageCapabilities(true);
         return caps.quiz?.node || null;
     }
-
+    
     function collectQuizContainers(root = getQuizRoot()) {
         if (!root) return [];
         let scoped = [...root.querySelectorAll('[class*="Question"]:not([class*="QuestionList"])')];
@@ -2690,7 +2682,7 @@
         scoped = [...root.querySelectorAll('[class*="OptionList"], .choicegroup, .field')];
         return scoped.filter(el => !scoped.some(parent => parent !== el && parent.contains(el)));
     }
-
+    
     function collectOptionNodes(container) {
         let options = [...container.querySelectorAll('[role="button"][aria-pressed]')];
         if (!options.length) {
@@ -2710,35 +2702,35 @@
         }
         return unique;
     }
-
+    
     function getQuestionText(container) {
         const candidates = [...container.querySelectorAll('[class*="QuestionText"], [class*="question-text"], [class*="Prompt"], [class*="stem"], legend, .problem-header, h1, h2, h3, h4')];
         for (const node of candidates) {
             const text = normalizeText(node.textContent);
             if (text.length > 10) return text;
         }
-
+    
         const clone = container.cloneNode(true);
         clone.querySelectorAll('input, button, label, [role="button"], [class*="Option"], [class*="choice"], .choicegroup').forEach(node => node.remove());
         const fallbackText = normalizeText(clone.textContent);
         if (fallbackText.length > 10) return fallbackText.slice(0, 320);
-
+    
         return normalizeText(container.textContent).slice(0, 320);
     }
-
+    
     function getChoiceText(option) {
         if (!(option instanceof HTMLElement)) return '';
         const directAria = normalizeText(option.getAttribute('aria-label') || '');
         if (directAria) return directAria;
-
+    
         const nestedAriaNode = option.querySelector('[aria-label]');
         const nestedAria = normalizeText(nestedAriaNode?.getAttribute('aria-label') || '');
         if (nestedAria) return nestedAria;
-
+    
         const fromLabel = option.querySelector('label') || option.closest('label');
         const fromLabelText = normalizeText(fromLabel?.innerText || fromLabel?.textContent || '');
         if (fromLabelText) return fromLabelText;
-
+    
         if (option.matches('input')) {
             const byId = option.id && window.CSS?.escape ? document.querySelector(`label[for="${CSS.escape(option.id)}"]`) : null;
             const byIdText = normalizeText(byId?.innerText || byId?.textContent || '');
@@ -2749,13 +2741,13 @@
             const parentText = normalizeText(option.parentElement?.innerText || option.parentElement?.textContent || '');
             if (parentText) return parentText;
         }
-
+    
         const fromInnerText = normalizeText(option.innerText || '');
         if (fromInnerText) return fromInnerText;
-
+    
         return normalizeText(option.textContent || option.getAttribute('value') || option.getAttribute('title') || '');
     }
-
+    
     function extractQuestionRecord(container, index) {
         const choiceNodes = collectOptionNodes(container);
         if (!choiceNodes.length) return null;
@@ -2763,7 +2755,7 @@
         const choiceTextsRaw = choiceNodes.map(getChoiceText);
         const nonEmptyChoices = choiceTextsRaw.filter(Boolean);
         let choiceTexts = choiceTextsRaw.map(text => text || '');
-
+    
         if (nonEmptyChoices.length < Math.min(2, choiceNodes.length)) {
             const fallbackPool = [...container.querySelectorAll('[role="button"][aria-label], [role="button"] [aria-label], [class*="OptionContent"][aria-label], .ant-radio-wrapper, .ant-checkbox-wrapper')]
                 .map(node => normalizeText(node.getAttribute?.('aria-label') || node.innerText || node.textContent || ''))
@@ -2778,7 +2770,7 @@
                 });
             }
         }
-
+    
         choiceTexts = choiceTexts.filter(Boolean);
         const questionHash = makeQuestionHash(questionText, choiceTexts);
         const legacyHash = questionText.substring(0, 50).replace(/\s+/g, '_');
@@ -2792,7 +2784,7 @@
             legacyHash,
         };
     }
-
+    
     function buildQuizPayload() {
         const root = getQuizRoot();
         const questions = collectQuizContainers(root).map((container, index) => extractQuestionRecord(container, index)).filter(Boolean);
@@ -2810,7 +2802,7 @@
             })),
         };
     }
-
+    
     function handleMissingAiKeyForQuiz() {
         const detail = getMissingAiKeyMessage();
         S.logger?.warn('quiz', 'missing-key', detail);
@@ -2819,7 +2811,7 @@
         setState('waiting-user', { capability: 'quiz', detail });
         return { ok: false, waitingUser: true, reason: 'missing-ai-key' };
     }
-
+    
     function importAnswerSetFromText(rawText) {
         const parsed = safeJsonParse(rawText);
         const normalized = normalizeAnswerSet(parsed);
@@ -2835,13 +2827,13 @@
         persistRuntimeSoon();
         return { ok: true, count: normalized.answers.length };
     }
-
+    
     function getImportedAnswerMap() {
         const imported = S.runtime.quiz.importedAnswerSet;
         if (!imported?.answers?.length) return new Map();
         return new Map(imported.answers.map(answer => [answer.questionHash, answer]));
     }
-
+    
     function chooseIndexFromRecord(questionRecord, record) {
         if (!record) return null;
         if (Number.isInteger(record.selectedIndex) && record.selectedIndex >= 0 && record.selectedIndex < questionRecord.choiceNodes.length) return record.selectedIndex;
@@ -2854,7 +2846,7 @@
         }
         return null;
     }
-
+    
     function findAnswerCandidate(questionRecord) {
         const importedMap = getImportedAnswerMap();
         const imported = importedMap.get(questionRecord.questionHash) || importedMap.get(questionRecord.legacyHash) || null;
@@ -2880,14 +2872,14 @@
         if (cached?.verifiedCorrect) return cached;
         return cached;
     }
-
+    
     function getClickableNode(option) {
         if (!(option instanceof HTMLElement)) return null;
         if (option.matches('input')) return option.closest('label') || option;
         const buttonLike = option.closest('button, label, [role="button"]');
         return buttonLike || option;
     }
-
+    
     async function clickAnswer(questionRecord, index) {
         const node = getClickableNode(questionRecord.choiceNodes[index]);
         if (!node) return false;
@@ -2896,15 +2888,15 @@
         node.click();
         return true;
     }
-
+    
     async function resolveAnswerForQuestion(questionRecord, options = {}) {
         const ignoreCache = options.ignoreCache === true;
         const candidate = ignoreCache ? null : findAnswerCandidate(questionRecord);
         const candidateIndex = chooseIndexFromRecord(questionRecord, candidate);
         if (candidate && candidateIndex !== null && (candidate.verifiedCorrect || candidate.confidence >= 0.45)) return { record: candidate, index: candidateIndex };
-
+    
         if (S.runtime?.quiz?.skipAiForRun && !ignoreCache) return { record: candidate, index: candidateIndex };
-
+    
         const aiRecord = await resolveAnswerViaAI(questionRecord);
         const aiIndex = chooseIndexFromRecord(questionRecord, aiRecord);
         if (aiRecord && aiIndex !== null && aiRecord.confidence >= 0.45) {
@@ -2914,7 +2906,7 @@
         }
         return { record: candidate, index: candidateIndex };
     }
-
+    
     function getSubmitCandidateScore(node) {
         if (!(node instanceof HTMLElement)) return -1;
         const text = normalizeText(node.textContent || node.getAttribute('aria-label') || '').toLowerCase();
@@ -2924,13 +2916,13 @@
         if (/(nộp|submit|kiểm tra|check)/.test(text)) return 80;
         return -1;
     }
-
+    
     function findQuizSubmitNodeFallback() {
         const root = getQuizRoot();
         const pools = [];
         if (root) pools.push(...root.querySelectorAll('button, [role="button"], input[type="submit"], .submit, [data-testid*="submit"]'));
         pools.push(...document.querySelectorAll('button, [role="button"], input[type="submit"], .submit, [data-testid*="submit"]'));
-
+    
         let bestNode = null;
         let bestScore = -1;
         for (const node of pools) {
@@ -2944,7 +2936,7 @@
         }
         return bestNode;
     }
-
+    
     async function submitQuizIfPossible() {
         const caps = detectPageCapabilities(true);
         const capabilityNode = caps.quizSubmit?.matched ? caps.quizSubmit.node : null;
@@ -2959,7 +2951,7 @@
         submitNode.click();
         return { submitted: true, reason: 'clicked-submit' };
     }
-
+    
     async function solveQuiz() {
         const root = getQuizRoot();
         if (!root) return { ok: false, waitingUser: true, reason: 'quiz-not-found' };
@@ -2967,7 +2959,7 @@
         const extracted = containers.map((container, index) => extractQuestionRecord(container, index));
         const questions = extracted.filter(Boolean);
         if (!questions.length) return { ok: false, waitingUser: true, reason: 'question-not-found' };
-
+    
         const droppedCount = containers.length - questions.length;
         if (droppedCount > 0) {
             S.logger?.warn('quiz', 'payload:dropped', `Bỏ qua ${droppedCount} block không trích được lựa chọn`, {
@@ -2979,7 +2971,7 @@
                     .slice(0, 4),
             });
         }
-
+    
         const hashCounter = new Map();
         questions.forEach(q => hashCounter.set(q.questionHash, (hashCounter.get(q.questionHash) || 0) + 1));
         const duplicateHashes = [...hashCounter.entries()].filter(([, count]) => count > 1);
@@ -3014,7 +3006,7 @@
             return `Q${q.index + 1}: ${q.questionText}\n${optionsText}`;
         }).join('\n\n');
         S.logger?.debug('quiz', 'payload:text', `Copied questions as plain text\n${payloadText}`);
-
+    
         // Cập nhật progress với số câu hỏi thực tế (không phải số DOM node sai)
         S.ui?.setProgress?.({
             done: 0,
@@ -3024,18 +3016,18 @@
             flags: { video: false, quiz: true, hw: false },
         });
         setLastAction(`Tìm thấy ${questions.length} câu hỏi`);
-
+    
         S.runtime.quiz.lastPayload = buildQuizPayload();
         S.runtime.quiz.pendingQuestionHashes = questions.map(question => question.questionHash);
         S.runtime.quiz.skipAiForRun = false;
         updateStats({ quizzesDetected: S.stats.quizzesDetected + 1 });
-
-        const forceBatchAi = true;
-        if (forceBatchAi && !hasConfiguredAiKey()) {
+    
+        const forceBatchAi = false;
+        if (!hasConfiguredAiKey()) {
             return handleMissingAiKeyForQuiz();
         }
         S.logger?.info('quiz', 'mode', forceBatchAi ? 'AI-first mode: copy -> batch AI -> fill' : 'Cache-first mode');
-
+    
         const missingCandidates = [];
         for (const q of questions) {
             if (forceBatchAi) {
@@ -3048,15 +3040,27 @@
                 missingCandidates.push(q);
             }
         }
-
+    
         const batchMapByQuestionIndex = new Map();
         if (missingCandidates.length > 0) {
             if (!S.runtime.active) return { ok: false, waitingUser: true, reason: 'automation-stopped' };
             S.logger?.info('quiz', 'batch', `Gửi ${missingCandidates.length}/${questions.length} câu cần AI giải`);
-            const batchResults = await resolveAnswersBatchViaAI(missingCandidates);
-            if (batchResults) {
+            const aggregatedResults = [];
+            for (let cursor = 0; cursor < missingCandidates.length; cursor += AI_BATCH_SIZE) {
+                const chunk = missingCandidates.slice(cursor, cursor + AI_BATCH_SIZE);
+                const batchResults = await resolveAnswersBatchViaAI(chunk);
+                if (!batchResults) {
+                    aggregatedResults.length = 0;
+                    break;
+                }
+                aggregatedResults.push(...batchResults);
+                if (cursor + AI_BATCH_SIZE < missingCandidates.length) {
+                    await humanDelay(900, 1400);
+                }
+            }
+            if (aggregatedResults.length) {
                 let cachedCount = 0;
-                batchResults.forEach((res, idx) => {
+                aggregatedResults.forEach((res, idx) => {
                     if (res) {
                         const qHash = missingCandidates[idx].questionHash;
                         const qIndex = missingCandidates[idx].index;
@@ -3073,13 +3077,13 @@
             }
             S.runtime.quiz.skipAiForRun = false;
         }
-
+    
         S.logger?.info('quiz', 'apply:start', `Bắt đầu điền đáp án sau khi AI trả về`, {
             totalQuestions: questions.length,
             batchResolved: batchMapByQuestionIndex.size,
             forceBatchAi,
         });
-
+    
         let applied = 0;
         let missingCount = 0;
         let waitingUser = false;
@@ -3142,38 +3146,38 @@
             await humanDelay(220, 340);
         }
         persistStatsSoon();
-
+    
         const selectedTextBlock = selectedAnswers
             .map(item => `Q${item.questionNo}: [${item.selectedIndex === null ? '?' : item.selectedIndex}] ${item.selectedText || '(missing)'}`)
             .join('\n');
         S.logger?.info('quiz', 'answer:selected', `Selected answers before submit\n${selectedTextBlock}`);
         S.logger?.debug('quiz', 'answer:selected:full', 'Selected answers detail', { answers: selectedAnswers });
-
+    
         if (missingCount > 0 || applied < questions.length) {
             const detail = `Mới điền ${applied}/${questions.length} câu. Còn thiếu ${Math.max(0, questions.length - applied)} câu`;
             S.logger?.warn('quiz', 'fill:incomplete', detail, { applied, total: questions.length, missingCount });
             setState('waiting-user', { capability: 'quiz', detail });
             return { ok: false, waitingUser: true, reason: 'incomplete-fill', applied, total: questions.length };
         }
-
+    
         if (!applied) {
             if (S.runtime.state !== 'waiting-user') {
                 setState('waiting-user', { capability: 'quiz', detail: 'Không tìm được đáp án đủ tin cậy' });
             }
             return { ok: false, waitingUser: true, reason: 'no-answer-applied' };
         }
-
+    
         if (!S.settings.automation.autoSubmit) {
             setState('waiting-user', { capability: 'quiz', detail: 'Đã điền đáp án, chờ người dùng nộp bài' });
             return { ok: true, applied, waitingUser: true, reason: 'submit-disabled' };
         }
-
+    
         const submit = await submitQuizIfPossible();
         if (!submit.submitted) {
             setState('running-quiz', { capability: 'quiz', detail: 'Đã điền đáp án, đang tìm nút nộp' });
             return { ok: true, applied, waitingUser: false, reason: submit.reason };
         }
-
+    
         S.runtime.quiz.awaitingNetwork = true;
         S.runtime.quiz.lastSubmittedAt = nowTs();
         setState('running-quiz', { capability: 'quiz', detail: 'Đã nộp quiz, chờ phản hồi' });
@@ -3181,7 +3185,7 @@
         persistRuntimeSoon();
         return { ok: true, applied, submitted: true };
     }
-
+    
     function markPendingAnswersVerified() {
         for (const questionHash of S.runtime.quiz.pendingQuestionHashes) {
             const existing = S.cache[questionHash];
@@ -3191,7 +3195,7 @@
             S.storage.saveCacheRecord(next);
         }
     }
-
+    
     function parseNetworkPayload(payload) {
         if (!payload || typeof payload !== 'object') return null;
         const url = typeof payload.url === 'string' ? payload.url : '';
@@ -3200,7 +3204,7 @@
         if (!response || typeof response !== 'object') return null;
         return { url, response };
     }
-
+    
     function extractScoreRatioFromValue(value) {
         if (value === null || value === undefined) return null;
         if (typeof value === 'number' && Number.isFinite(value)) {
@@ -3221,7 +3225,7 @@
         }
         return null;
     }
-
+    
     function extractScoreRatio(data) {
         if (!data || typeof data !== 'object') return null;
         const direct = [
@@ -3238,7 +3242,7 @@
         }
         return null;
     }
-
+    
     function extractScoreRatioFromDom() {
         const text = normalizeText(document.body?.innerText || '');
         if (!text) return null;
@@ -3249,11 +3253,11 @@
         if (!Number.isFinite(earned) || !Number.isFinite(total) || total <= 0) return null;
         return earned / total;
     }
-
+    
     function handleQuizNetworkPayload(payload) {
         const parsed = parseNetworkPayload(payload);
         if (!parsed || !S.runtime.active) return;
-
+    
         const data = parsed.response;
         let correct = null;
         if (data.correct_map && typeof data.correct_map === 'object') {
@@ -3281,9 +3285,9 @@
                 correct = false;
             }
         }
-
+    
         if (correct === null) return;
-
+    
         if (correct) {
             markPendingAnswersVerified();
             S.runtime.quiz.awaitingNetwork = false;
@@ -3294,7 +3298,7 @@
             if (S.settings.automation.autoNextLesson) scheduleRun('quiz-verified', 900);
             return;
         }
-
+    
         S.runtime.quiz.attempts += 1;
         S.runtime.quiz.awaitingNetwork = false;
         const maxRetries = S.settings.automation.maxQuizRetries;
