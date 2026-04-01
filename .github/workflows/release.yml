@@ -1,0 +1,64 @@
+name: Release Extension
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Derive version
+        id: version
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Patch manifest version for release package
+        shell: bash
+        run: |
+          node -e "const fs=require('fs'); const file='manifest.json'; const data=JSON.parse(fs.readFileSync(file,'utf8')); data.version=process.argv[1]; fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');" "${{ steps.version.outputs.version }}"
+
+      - name: Build content bundle
+        run: node build.js
+
+      - name: Prepare release directory
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          RELEASE_DIR="dist/LMSx-v${VERSION}"
+          mkdir -p "$RELEASE_DIR"
+          cp -r assets "$RELEASE_DIR/"
+          cp manifest.json background.js content.js inject.js obfuscate.js "$RELEASE_DIR/"
+
+      - name: Create zip archive
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          cd dist
+          zip -r "LMSx-v${VERSION}.zip" "LMSx-v${VERSION}"
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: LMSx v${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: |
+            dist/LMSx-v${{ steps.version.outputs.version }}.zip
