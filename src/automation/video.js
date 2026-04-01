@@ -4,6 +4,7 @@ class VideoCtrl {
         this.timer = null;
         this.completeHandler = null;
         this._ended = false;
+        this._nearEndSince = 0;
         this._onEnded = () => this.finish('ended');
     }
 
@@ -13,6 +14,7 @@ class VideoCtrl {
         this.stop();
         this.video = nextVideo || null;
         this._ended = false;
+        this._nearEndSince = 0;
         if (this.video) this.video.addEventListener('ended', this._onEnded, { once: true });
         return this.video;
     }
@@ -124,7 +126,20 @@ class VideoCtrl {
         if (!duration || Number.isNaN(duration)) return;
         const percent = clamp(Math.round((current / duration) * 100), 0, 100);
         setLastAction(`Video x${speed} • ${percent}%`);
-        if ((current / duration) >= 0.98 || (duration - current) <= 1) this.finish('threshold');
+        if (this.video.ended) {
+            this.finish('ended-flag');
+            return;
+        }
+
+        const remaining = duration - current;
+        if (remaining <= 0.05) {
+            if (!this._nearEndSince) this._nearEndSince = nowTs();
+            // Fallback only when the player stays at the absolute end for a while.
+            if ((nowTs() - this._nearEndSince) >= 2500) this.finish('near-end-stable');
+            return;
+        }
+
+        this._nearEndSince = 0;
     }
 
     onComplete(callback) {
@@ -145,6 +160,7 @@ class VideoCtrl {
             S.timers.delete(this.timer);
             this.timer = null;
         }
+        this._nearEndSince = 0;
         if (this.video) {
             try { this.video.removeEventListener('ended', this._onEnded, { once: true }); } catch {}
         }

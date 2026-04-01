@@ -170,7 +170,7 @@ function pickNextLessonCandidate() {
     const candidates = collectLessonCandidates();
     if (!candidates.length) {
         S.logger?.info('navigator', 'pick:empty', 'Không tìm thấy bài học nào trong sidebar');
-        return { candidate: null, candidates, currentIndex: -1 };
+        return { candidate: null, candidates, currentIndex: -1, blocked: false };
     }
     const currentIndex = findCurrentLessonIndex(candidates);
     S.logger?.info('navigator', 'pick:index', `currentIndex=${currentIndex}, total=${candidates.length}, current="${candidates[currentIndex]?.text?.slice(0, 50) || 'N/A'}"`);
@@ -179,17 +179,24 @@ function pickNextLessonCandidate() {
         const next = candidates[currentIndex + 1];
         if (next.disabled) {
             S.logger?.warn('navigator', 'pick:blocked', `Adjacent lesson looks locked: "${next.text.slice(0, 60)}"`);
-            return { candidate: null, candidates, currentIndex };
+            return { candidate: null, candidates, currentIndex, blocked: true };
         }
         S.logger?.info('navigator', 'pick:next', `Next lesson: "${next.text.slice(0, 60)}"`);
-        return { candidate: next, candidates, currentIndex };
+        return { candidate: next, candidates, currentIndex, blocked: false };
     }
     if (currentIndex === candidates.length - 1) {
         S.logger?.info('navigator', 'pick:last', 'Bài hiện tại là bài cuối trong danh sách');
-        return { candidate: null, candidates, currentIndex };
+        return { candidate: null, candidates, currentIndex, blocked: false };
     }
     S.logger?.warn('navigator', 'pick:unknown-current', 'Không xác định được bài hiện tại, bỏ qua điều hướng bằng sidebar');
-    return { candidate: null, candidates, currentIndex };
+    return { candidate: null, candidates, currentIndex, blocked: false };
+}
+
+function shouldWaitForVideoUnlock(caps) {
+    if (!caps?.video?.matched) return false;
+    const pick = pickNextLessonCandidate();
+    if (pick.blocked) return true;
+    return false;
 }
 
 async function openNextChapterAfterCurrent(candidates, currentIndex) {
@@ -219,11 +226,22 @@ async function navigateNext(reason = 'next') {
     let pick = pickNextLessonCandidate();
     let lessonCandidate = pick.candidate;
 
+    if (pick.blocked) {
+        setState('ready', { capability: 'video', detail: 'Bài tiếp theo chưa mở khóa, đang chờ LMS cập nhật' });
+        scheduleRun('wait-next-unlock', 2500);
+        return false;
+    }
+
     if (!lessonCandidate && pick.currentIndex >= 0 && pick.currentIndex === pick.candidates.length - 1) {
         const openedNextChapter = await openNextChapterAfterCurrent(pick.candidates, pick.currentIndex);
         if (openedNextChapter) {
             pick = pickNextLessonCandidate();
             lessonCandidate = pick.candidate;
+            if (pick.blocked) {
+                setState('ready', { capability: 'video', detail: 'Chapter sau đã mở nhưng bài tiếp theo vẫn khóa' });
+                scheduleRun('wait-next-unlock', 2500);
+                return false;
+            }
         }
     }
 
@@ -261,7 +279,7 @@ async function ensureVideoPlayback() {
         updateStats({ videosCompleted: S.stats.videosCompleted + 1 });
         setState('ready', { capability: 'video', detail: 'Video hoàn tất' });
         S.ui?.toast?.('Video đã xong', 'ok', 2200);
-        if (S.settings.automation.autoNextLesson) scheduleRun('video-complete', 900);
+        if (S.settings.automation.autoNextLesson) scheduleRun('video-complete', 3500);
     });
     const ok = await S.videoCtrl.autoPlay(S.settings.automation.videoSpeed);
     if (!ok) {
@@ -347,6 +365,11 @@ async function runAutomationCycle(reason = 'manual') {
         
         // Navigate sau video/quiz phải check TRƯỚC các xử lý chức năng để tránh kẹt trạng thái
         if (S.settings.automation.autoNextLesson && /^(video-complete|quiz-verified|quiz-await-network)$/.test(reason)) {
+            if (reason === 'video-complete' && shouldWaitForVideoUnlock(caps)) {
+                setState('running-video', { capability: 'video', detail: 'Đã xem xong, đang chờ LMS mở khóa bài tiếp theo' });
+                scheduleRun('video-complete-wait-unlock', 2500);
+                return;
+            }
             const lastNav = S.runtime._lastAutoNavigate || 0;
             if (nowTs() - lastNav < 3000) {
                 setState('ready', { capability: caps.currentCapability, detail: 'Chờ trước khi chuyển bài' });
@@ -381,16 +404,14 @@ async function runAutomationCycle(reason = 'manual') {
 
         if (caps.video?.matched) {
             const vid = caps.video.node;
-            const isFinished = (S.videoCtrl && S.videoCtrl._ended && S.videoCtrl.video === vid) || 
-                               vid.ended || 
-                               (vid.duration && (vid.currentTime / vid.duration >= 0.995 || vid.duration - vid.currentTime <= 0.35));
+            const isFinished = (S.videoCtrl && S.videoCtrl._ended && S.videoCtrl.video === vid) || vid.ended;
 
             if (!isFinished) {
                 setState('running-video', { capability: 'video', detail: 'Đang điều khiển video' });
                 await ensureVideoPlayback();
                 return;
             } else if (S.videoCtrl && S.videoCtrl.video === vid && !S.videoCtrl._ended) {
-                S.videoCtrl.finish('threshold-detected');
+                S.videoCtrl.finish('ended-detected');
             }
         }
 

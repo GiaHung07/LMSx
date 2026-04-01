@@ -1,7 +1,7 @@
 // content.js - LMSX build
 (function () {
     'use strict';
-    const __LMSX_BUILD_STAMP__ = "2026-04-01T17:58:35.543Z";
+    const __LMSX_BUILD_STAMP__ = "2026-04-01T19:08:18.280Z";
 
     // -- main.js --
     const LMSX_VERSION = '3.6';
@@ -1046,11 +1046,8 @@
     function extractAiKeyCandidate(rawValue = '') {
         const text = String(rawValue || '').trim();
         if (!text) return '';
-        const groqMatch = text.match(/gsk_[A-Za-z0-9_-]{20,}/);
-        if (groqMatch) return groqMatch[0];
-        const geminiMatch = text.match(/AIzaSy[0-9A-Za-z_-]{33}/);
-        if (geminiMatch) return geminiMatch[0];
-        return text.replace(/\s+/g, '');
+        const match = text.match(/AIzaSy[0-9A-Za-z_-]{33}/);
+        return match ? match[0] : text.replace(/\s+/g, '');
     }
     
     function pickBestAnswerCandidate(candidates) {
@@ -1087,10 +1084,7 @@
     function sanitizeAiKeyInput(rawValue = '') {
         return extractAiKeyCandidate(rawValue).trim();
     }
-
-    const AI_BATCH_SIZE = 4;
-    const AI_RECHECK_LIMIT = 0;
-
+    
     function isLikelyApiKey(provider, value = '') {
         const v = String(value || '').trim();
         if (provider === 'groq') return v.startsWith('gsk_');
@@ -1139,7 +1133,7 @@
     }
     
     function getMissingAiKeyMessage() {
-        return 'Thiếu Groq API key. Hãy mở Cài đặt và nhập key.';
+        return 'Thiếu API key. Vui lòng cấu hình key trong cài đặt.';
     }
     
     function isProviderBlocked(provider, key) {
@@ -1188,7 +1182,7 @@
             text.includes('the operation was aborted') ||
             text.includes('operation was aborted')
         ) {
-            return 'Yêu cầu AI hết thời gian phản hồi';
+            return 'Yêu cầu hết thời gian phản hồi từ Groq. Vui lòng thử lại.';
         }
         if (text.includes('failed to fetch') || text.includes('networkerror') || text.includes('load failed')) {
             return 'Không thể kết nối tới Groq';
@@ -1277,197 +1271,58 @@
         });
     }
     
-    const SUBJECT_PROFILES = [
-        {
-            id: 'marxist_political_economy',
-            label: 'Kinh tế chính trị Mác-Lênin',
-            patterns: [
-                /kinh tế chính trị/i,
-                /mác\s*-?\s*lênin/i,
-                /marxist political economy/i,
-                /hàng hoá|giá trị sử dụng|giá trị hàng hóa|quy luật giá trị|lao động trừu tượng|lao động cụ thể/i,
-            ],
-            guidance: [
-                'Ưu tiên định nghĩa đúng theo giáo trình Kinh tế chính trị Mác-Lênin, không suy luận theo nghĩa đời thường.',
-                'Phân biệt rất kỹ các cặp khái niệm: hàng hóa / sản phẩm, giá trị / giá trị sử dụng, lao động cụ thể / lao động trừu tượng, lao động tư nhân / lao động xã hội.',
-                'Cảnh giác với đáp án nghe hợp lý nhưng sai đúng một cụm từ như công hữu, công cộng, sở hữu, phân công lao động xã hội, tách biệt kinh tế.',
-            ],
-        },
-        {
-            id: 'marxist_philosophy',
-            label: 'Triết học Mác-Lênin',
-            patterns: [
-                /triết học/i,
-                /duy vật biện chứng|duy vật lịch sử|lượng chất|phủ định của phủ định|mâu thuẫn biện chứng|ý thức xã hội/i,
-            ],
-            guidance: [
-                'Ưu tiên khái niệm chuẩn của Triết học Mác-Lênin theo giáo trình Việt Nam.',
-                'Phân biệt bản chất, hiện tượng, nội dung, hình thức, nguyên nhân, kết quả, khả năng, hiện thực và các cặp phạm trù tương tự.',
-                'Với câu hỏi quy luật hay nguyên lý, chọn đáp án đúng và đầy đủ nhất, tránh đáp án chỉ đúng một phần.',
-            ],
-        },
-        {
-            id: 'scientific_socialism',
-            label: 'Chủ nghĩa xã hội khoa học',
-            patterns: [
-                /chủ nghĩa xã hội khoa học/i,
-                /cnxh khoa học/i,
-                /sứ mệnh lịch sử|giai cấp công nhân|thời kỳ quá độ|nhà nước xã hội chủ nghĩa/i,
-            ],
-            guidance: [
-                'Ưu tiên lập luận đúng theo giáo trình Chủ nghĩa xã hội khoa học của các trường đại học Việt Nam.',
-                'Phân biệt điều kiện khách quan, nhân tố chủ quan, đặc trưng xã hội chủ nghĩa, thời kỳ quá độ và sứ mệnh lịch sử của giai cấp công nhân.',
-            ],
-        },
-        {
-            id: 'ho_chi_minh_thought',
-            label: 'Tư tưởng Hồ Chí Minh',
-            patterns: [
-                /tư tưởng hồ chí minh/i,
-                /hồ chí minh/i,
-                /độc lập dân tộc gắn liền với chủ nghĩa xã hội|đại đoàn kết|đạo đức cách mạng/i,
-            ],
-            guidance: [
-                'Ưu tiên nội dung đúng theo giáo trình Tư tưởng Hồ Chí Minh và các mệnh đề chuẩn trong học phần.',
-                'Cẩn thận với các đáp án gần nghĩa nhưng sai ở mức độ, phạm vi hoặc thứ tự tư tưởng.',
-            ],
-        },
-        {
-            id: 'general_political_theory',
-            label: 'Lý luận chính trị',
-            patterns: [],
-            guidance: [
-                'Ưu tiên đáp án đúng theo giáo trình đại học Việt Nam và thuật ngữ chuẩn của môn học.',
-                'Không chọn theo suy luận đời thường nếu đáp án lệch câu chữ so với định nghĩa học thuật.',
-            ],
-        },
-    ];
-    
-    function getRelevantPageTexts() {
-        const selectors = [
-            'title',
-            'h1',
-            'h2',
-            '.ant-breadcrumb',
-            '[class*="course"]',
-            '[class*="Course"]',
-            '[class*="header"]',
-            '[class*="Header"]',
-            '[class*="lesson"]',
-        ];
-        const values = new Set();
-    
-        const pushText = text => {
-            const normalized = normalizeText(text || '');
-            if (normalized.length >= 4) values.add(normalized.slice(0, 240));
-        };
-    
-        pushText(document.title || '');
-        selectors.forEach(selector => {
-            document.querySelectorAll(selector).forEach(node => {
-                if (!(node instanceof HTMLElement)) return;
-                pushText(node.innerText || node.textContent || '');
-            });
-        });
-    
-        return [...values].slice(0, 16);
-    }
-    
-    function detectSubjectProfile(question = '', choices = [], extraTexts = []) {
-        const haystack = [
-            question,
-            ...choices,
-            ...extraTexts,
-            ...getRelevantPageTexts(),
-        ].join('\n').toLowerCase();
-    
-        let best = SUBJECT_PROFILES[SUBJECT_PROFILES.length - 1];
-        let bestScore = -1;
-        for (const profile of SUBJECT_PROFILES) {
-            const score = profile.patterns.reduce((sum, pattern) => sum + (pattern.test(haystack) ? 1 : 0), 0);
-            if (score > bestScore) {
-                best = profile;
-                bestScore = score;
-            }
-        }
-        return best;
-    }
-    
-    function buildSubjectContextBlock(profile, question, choices, extraTexts = []) {
-        const pageTexts = [...new Set([...extraTexts, ...getRelevantPageTexts()])].slice(0, 2);
-        const contextLines = [];
-        contextLines.push(`Subject: ${profile.label}`);
-        if (pageTexts.length) {
-            contextLines.push(`Context: ${pageTexts.join(' | ')}`);
-        }
-        contextLines.push(`Choices: ${choices.length}`);
-        return contextLines.join('\n');
-    }
-
-    function buildSharedPromptRules(profile) {
-        const guidanceLines = profile.guidance.slice(0, 2).map(line => `- ${line}`).join('\n');
-        return `Answer Vietnamese university multiple-choice questions according to the textbook meaning.
-
-    Subject-specific guidance:
-    ${guidanceLines}
-
-    Rules:
-    - Pay special attention to trap words: "không", "ngoại trừ", "sai", "đúng nhất", "đầy đủ nhất", "bao gồm", "mọi", "tất cả", "chỉ", "duy nhất".
-    - If multiple options look plausible, choose the most standard and complete textbook answer.
-    - Return valid JSON only.
-    - Do not explain.
-
-    Return ONLY valid JSON: {"i":0}`;
-    }
-    
-    function buildAiPrompt(question, choices, extraTexts = []) {
-        const profile = detectSubjectProfile(question, choices, extraTexts);
-        return `${buildSharedPromptRules(profile)}
-    
-    ${buildSubjectContextBlock(profile, question, choices, extraTexts)}
+    function buildAiPrompt(question, choices) {
+        return `You are a world-class expert in Marxist Political Economy and Vietnamese university multiple-choice exams.
+    Use rigorous reasoning internally to identify concept, detect traps, eliminate wrong choices, and select the most academically correct option.
     
     Question:
     ${question}
     
     Choices:
-    ${choices.map((choice, index) => `[${index}] ${choice}`).join('\n')}`;
+    ${choices.map((choice, index) => `[${index}] ${choice}`).join('\n')}
+    
+    STRICT OUTPUT RULES:
+    - Return ONLY one raw JSON object
+    - No markdown, no code fences, no text outside JSON
+    - selectedIndex must be an integer matching one [N] option
+    
+    Return EXACTLY this schema:
+    {"selectedIndex": <integer>, "selectedValue": "<exact choice text>", "confidence": 0.95, "reason": "<short rationale>"}`;
     }
     
-    function buildAiVerifyPrompt(question, choices, candidateIndex, extraTexts = []) {
-        const profile = detectSubjectProfile(question, choices, extraTexts);
-        return `${buildSharedPromptRules(profile)}
-
-    Verify the current candidate [${candidateIndex}].
-    If it is not the best textbook answer, return the better index.
-
-    ${buildSubjectContextBlock(profile, question, choices, extraTexts)}
+    function buildAiVerifyPrompt(question, choices, candidateIndex) {
+        return `You are validating a multiple-choice answer for a Vietnamese Marxist Political Economy exam.
+    Check whether candidate option [${candidateIndex}] is truly the best answer.
+    If it is wrong, pick the correct option.
     
     Question:
     ${question}
     
     Choices:
-    ${choices.map((choice, index) => `[${index}] ${choice}`).join('\n')}`;
+    ${choices.map((choice, index) => `[${index}] ${choice}`).join('\n')}
+    
+    Return ONLY one JSON object, no markdown:
+    {"selectedIndex": <integer>, "selectedValue": "<exact choice text>", "confidence": 0.95, "reason": "<short rationale>"}`;
     }
     
     function normalizeAiAnswer(raw, questionHash, choices, provider) {
-        if (typeof raw === 'number' && Number.isFinite(raw)) {
-            raw = { i: Math.round(raw) };
-        }
         if (!raw || typeof raw !== 'object') {
             S.logger?.warn('ai', 'normalize:fail', 'raw is not object', { rawType: typeof raw, raw: String(raw).slice(0, 200) });
             return null;
         }
-        const rawIndex = raw?.i ?? raw?.selectedIndex ?? raw?.index;
+        const rawIndex = raw?.selectedIndex ?? raw?.index;
         const selectedIndex = Number.isInteger(rawIndex) ? rawIndex : (typeof rawIndex === 'number' ? Math.round(rawIndex) : null);
         const selectedValue = typeof raw?.selectedValue === 'string' ? normalizeText(raw.selectedValue) : '';
+        // AI often returns 0 confidence from template copying; force minimum 0.85 if it gave us an answer
         let confidence = clamp(Number(raw?.confidence) || 0, 0, 1);
         const hasValue = selectedIndex !== null || !!selectedValue;
         if (!hasValue) {
             S.logger?.warn('ai', 'normalize:empty', 'no selectedIndex or selectedValue', { raw: JSON.stringify(raw).slice(0, 200) });
             return null;
         }
+        // If the AI returned an answer but confidence is suspiciously low (e.g. copied schema), boost it
         if (confidence < 0.5 && hasValue) {
-            confidence = 0.9;
+            confidence = 0.85;
         }
         return normalizeCacheRecord({
             questionHash,
@@ -1501,9 +1356,8 @@
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
             body: JSON.stringify({
                 model: 'llama-3.3-70b-versatile',
-                temperature: 0,
+                temperature: 0.1,
                 response_format: { type: 'json_object' },
-                max_completion_tokens: 24,
                 messages: [{ role: 'user', content: prompt }],
             }),
         });
@@ -1522,11 +1376,7 @@
     
     async function resolveWithProvider(provider, key, questionRecord, options = {}) {
         const silent = options.silent === true;
-        const prompt = options.promptOverride || buildAiPrompt(
-            questionRecord.questionText,
-            questionRecord.choiceTexts,
-            [questionRecord.questionText, ...(questionRecord.choiceTexts || [])],
-        );
+        const prompt = options.promptOverride || buildAiPrompt(questionRecord.questionText, questionRecord.choiceTexts);
         if (!silent) {
             S.logger?.info('ai', 'request', `Provider ${provider}`, { questionHash: questionRecord.questionHash });
             setState('waiting-ai', { capability: 'quiz', detail: `Đang hỏi ${provider}` });
@@ -1537,7 +1387,7 @@
                 S.logger?.debug('ai', 'single:raw', 'Raw AI response', { raw: JSON.stringify(raw).slice(0, 300) });
             }
             const normalized = normalizeAiAnswer(raw, questionRecord.questionHash, questionRecord.choiceTexts, provider);
-            if (!normalized) throw new Error('Phản hồi AI không đúng định dạng');
+            if (!normalized) throw new Error('AI response did not match schema');
             return normalized;
         } catch (error) {
             const message = normalizeAiErrorMessage(error);
@@ -1554,19 +1404,15 @@
     }
     
     function buildAiBatchPrompt(questionsList) {
-        const extraTexts = questionsList.flatMap(q => [q.questionText, ...(q.choiceTexts || [])]).slice(0, 40);
-        const profile = detectSubjectProfile('', [], extraTexts);
-        let block = `${buildSharedPromptRules(profile)}
-
-    Answer ${questionsList.length} questions in order.
-    Return ONLY valid JSON with exactly one key "a".
-    Schema: {"a":[0,1,2]}
-    - "a" must be an array of exactly ${questionsList.length} integers.
-    - Each integer must be the selected 0-based option index for the matching question.
-
-    Subject: ${profile.label}
-    Context: ${getRelevantPageTexts().slice(0, 2).join(' | ') || 'N/A'}
-
+        let block = `You are a world-class expert in Marxist Political Economy, Vietnamese academic curriculum, and multiple-choice exam analysis.
+    Use rigorous internal reasoning for each question: identify concept, detect traps (NOT/EXCEPT/overgeneralization), eliminate wrong options, then pick the most precise answer.
+    
+    I have ${questionsList.length} multiple-choice questions. Answer ALL of them.
+    Return ONLY a JSON object. No markdown fences. No text outside JSON.
+    The JSON must have an "answers" array with EXACTLY ${questionsList.length} elements (one per question, in order).
+    Each element schema:
+    {"selectedIndex": <0-based integer>, "selectedValue": "<exact option text>", "confidence": 0.95, "reason": "<very short rationale>"}
+    
     `;
         questionsList.forEach((q, i) => {
             block += `Q${i + 1}: ${q.questionText}\n`;
@@ -1595,8 +1441,7 @@
         }
         if (!riskyIndexes.length) return results;
     
-        const maxRechecks = Math.min(AI_RECHECK_LIMIT, riskyIndexes.length);
-        if (!maxRechecks) return results;
+        const maxRechecks = Math.min(3, riskyIndexes.length);
         const recheckProvider = provider;
         const recheckKey = key;
         const next = [...results];
@@ -1610,12 +1455,7 @@
             const questionRecord = questionRecords[idx];
             const current = next[idx];
             const rechecked = await resolveWithProvider(recheckProvider, recheckKey, questionRecord, { silent: true });
-            const verifyPrompt = buildAiVerifyPrompt(
-                questionRecord.questionText,
-                questionRecord.choiceTexts,
-                rechecked?.selectedIndex ?? current?.selectedIndex ?? 0,
-                [questionRecord.questionText, ...(questionRecord.choiceTexts || [])],
-            );
+            const verifyPrompt = buildAiVerifyPrompt(questionRecord.questionText, questionRecord.choiceTexts, rechecked?.selectedIndex ?? current?.selectedIndex ?? 0);
             const verified = await resolveWithProvider(recheckProvider, recheckKey, questionRecord, {
                 silent: true,
                 promptOverride: verifyPrompt,
@@ -1677,9 +1517,7 @@
                 isArray: Array.isArray(raw),
                 keys: raw && typeof raw === 'object' ? Object.keys(raw) : 'N/A'
             });
-            if (Array.isArray(raw?.a)) {
-                answers = raw.a;
-            } else if (Array.isArray(raw?.answers)) {
+            if (Array.isArray(raw?.answers)) {
                 answers = raw.answers;
             } else if (Array.isArray(raw)) {
                 answers = raw;
@@ -1687,7 +1525,7 @@
                 const possibleArrays = Object.values(raw).filter(v => Array.isArray(v));
                 if (possibleArrays.length === 1) {
                     answers = possibleArrays[0];
-                    S.logger?.info('ai', 'batch:fallback', `Tìm thấy mảng đáp án ở key khác "answers"`, { count: answers.length });
+                    S.logger?.info('ai', 'batch:fallback', `Found answers array in key other than 'answers'`, { count: answers.length });
                 }
             }
     
@@ -1697,7 +1535,7 @@
                     rawType: typeof raw,
                     rawPreview: JSON.stringify(raw).slice(0, 800) 
                 });
-                throw new Error('Phản hồi AI không chứa mảng đáp án');
+                throw new Error('AI response did not contain answers array');
             }
     
             S.logger?.info('ai', 'batch:parsed', `Got ${answers.length} answers for ${questionRecords.length} questions`);
@@ -1716,12 +1554,12 @@
     
             const results = questionRecords.map((qr, idx) => {
                 const ans = answers[idx];
-                if (!qr || ans === null || ans === undefined) {
+                if (!qr || !ans) {
                     S.logger?.warn('ai', 'batch:item-null', `Answer ${idx} is null/missing`, { hasQr: !!qr, hasAns: !!ans, questionHash: qr?.questionHash?.slice(0, 20) });
                     return null;
                 }
                 S.logger?.debug('ai', 'batch:normalize:start', `Normalizing Q${idx}`, { 
-                    ansKeys: typeof ans === 'object' && ans ? Object.keys(ans) : [],
+                    ansKeys: Object.keys(ans || {}),
                     questionHash: qr.questionHash?.slice(0, 20),
                     choiceCount: qr.choiceTexts?.length 
                 });
@@ -2518,6 +2356,7 @@
             this.timer = null;
             this.completeHandler = null;
             this._ended = false;
+            this._nearEndSince = 0;
             this._onEnded = () => this.finish('ended');
         }
 
@@ -2527,6 +2366,7 @@
             this.stop();
             this.video = nextVideo || null;
             this._ended = false;
+            this._nearEndSince = 0;
             if (this.video) this.video.addEventListener('ended', this._onEnded, { once: true });
             return this.video;
         }
@@ -2638,7 +2478,20 @@
             if (!duration || Number.isNaN(duration)) return;
             const percent = clamp(Math.round((current / duration) * 100), 0, 100);
             setLastAction(`Video x${speed} • ${percent}%`);
-            if ((current / duration) >= 0.98 || (duration - current) <= 1) this.finish('threshold');
+            if (this.video.ended) {
+                this.finish('ended-flag');
+                return;
+            }
+
+            const remaining = duration - current;
+            if (remaining <= 0.05) {
+                if (!this._nearEndSince) this._nearEndSince = nowTs();
+                // Fallback only when the player stays at the absolute end for a while.
+                if ((nowTs() - this._nearEndSince) >= 2500) this.finish('near-end-stable');
+                return;
+            }
+
+            this._nearEndSince = 0;
         }
 
         onComplete(callback) {
@@ -2659,6 +2512,7 @@
                 S.timers.delete(this.timer);
                 this.timer = null;
             }
+            this._nearEndSince = 0;
             if (this.video) {
                 try { this.video.removeEventListener('ended', this._onEnded, { once: true }); } catch {}
             }
@@ -3486,7 +3340,7 @@
         const candidates = collectLessonCandidates();
         if (!candidates.length) {
             S.logger?.info('navigator', 'pick:empty', 'Không tìm thấy bài học nào trong sidebar');
-            return { candidate: null, candidates, currentIndex: -1 };
+            return { candidate: null, candidates, currentIndex: -1, blocked: false };
         }
         const currentIndex = findCurrentLessonIndex(candidates);
         S.logger?.info('navigator', 'pick:index', `currentIndex=${currentIndex}, total=${candidates.length}, current="${candidates[currentIndex]?.text?.slice(0, 50) || 'N/A'}"`);
@@ -3495,17 +3349,24 @@
             const next = candidates[currentIndex + 1];
             if (next.disabled) {
                 S.logger?.warn('navigator', 'pick:blocked', `Adjacent lesson looks locked: "${next.text.slice(0, 60)}"`);
-                return { candidate: null, candidates, currentIndex };
+                return { candidate: null, candidates, currentIndex, blocked: true };
             }
             S.logger?.info('navigator', 'pick:next', `Next lesson: "${next.text.slice(0, 60)}"`);
-            return { candidate: next, candidates, currentIndex };
+            return { candidate: next, candidates, currentIndex, blocked: false };
         }
         if (currentIndex === candidates.length - 1) {
             S.logger?.info('navigator', 'pick:last', 'Bài hiện tại là bài cuối trong danh sách');
-            return { candidate: null, candidates, currentIndex };
+            return { candidate: null, candidates, currentIndex, blocked: false };
         }
         S.logger?.warn('navigator', 'pick:unknown-current', 'Không xác định được bài hiện tại, bỏ qua điều hướng bằng sidebar');
-        return { candidate: null, candidates, currentIndex };
+        return { candidate: null, candidates, currentIndex, blocked: false };
+    }
+
+    function shouldWaitForVideoUnlock(caps) {
+        if (!caps?.video?.matched) return false;
+        const pick = pickNextLessonCandidate();
+        if (pick.blocked) return true;
+        return false;
     }
 
     async function openNextChapterAfterCurrent(candidates, currentIndex) {
@@ -3535,11 +3396,22 @@
         let pick = pickNextLessonCandidate();
         let lessonCandidate = pick.candidate;
 
+        if (pick.blocked) {
+            setState('ready', { capability: 'video', detail: 'Bài tiếp theo chưa mở khóa, đang chờ LMS cập nhật' });
+            scheduleRun('wait-next-unlock', 2500);
+            return false;
+        }
+
         if (!lessonCandidate && pick.currentIndex >= 0 && pick.currentIndex === pick.candidates.length - 1) {
             const openedNextChapter = await openNextChapterAfterCurrent(pick.candidates, pick.currentIndex);
             if (openedNextChapter) {
                 pick = pickNextLessonCandidate();
                 lessonCandidate = pick.candidate;
+                if (pick.blocked) {
+                    setState('ready', { capability: 'video', detail: 'Chapter sau đã mở nhưng bài tiếp theo vẫn khóa' });
+                    scheduleRun('wait-next-unlock', 2500);
+                    return false;
+                }
             }
         }
 
@@ -3577,7 +3449,7 @@
             updateStats({ videosCompleted: S.stats.videosCompleted + 1 });
             setState('ready', { capability: 'video', detail: 'Video hoàn tất' });
             S.ui?.toast?.('Video đã xong', 'ok', 2200);
-            if (S.settings.automation.autoNextLesson) scheduleRun('video-complete', 900);
+            if (S.settings.automation.autoNextLesson) scheduleRun('video-complete', 3500);
         });
         const ok = await S.videoCtrl.autoPlay(S.settings.automation.videoSpeed);
         if (!ok) {
@@ -3663,6 +3535,11 @@
             
             // Navigate sau video/quiz phải check TRƯỚC các xử lý chức năng để tránh kẹt trạng thái
             if (S.settings.automation.autoNextLesson && /^(video-complete|quiz-verified|quiz-await-network)$/.test(reason)) {
+                if (reason === 'video-complete' && shouldWaitForVideoUnlock(caps)) {
+                    setState('running-video', { capability: 'video', detail: 'Đã xem xong, đang chờ LMS mở khóa bài tiếp theo' });
+                    scheduleRun('video-complete-wait-unlock', 2500);
+                    return;
+                }
                 const lastNav = S.runtime._lastAutoNavigate || 0;
                 if (nowTs() - lastNav < 3000) {
                     setState('ready', { capability: caps.currentCapability, detail: 'Chờ trước khi chuyển bài' });
@@ -3697,16 +3574,14 @@
 
             if (caps.video?.matched) {
                 const vid = caps.video.node;
-                const isFinished = (S.videoCtrl && S.videoCtrl._ended && S.videoCtrl.video === vid) || 
-                                   vid.ended || 
-                                   (vid.duration && (vid.currentTime / vid.duration >= 0.995 || vid.duration - vid.currentTime <= 0.35));
+                const isFinished = (S.videoCtrl && S.videoCtrl._ended && S.videoCtrl.video === vid) || vid.ended;
 
                 if (!isFinished) {
                     setState('running-video', { capability: 'video', detail: 'Đang điều khiển video' });
                     await ensureVideoPlayback();
                     return;
                 } else if (S.videoCtrl && S.videoCtrl.video === vid && !S.videoCtrl._ended) {
-                    S.videoCtrl.finish('threshold-detected');
+                    S.videoCtrl.finish('ended-detected');
                 }
             }
 
