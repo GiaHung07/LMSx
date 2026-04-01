@@ -1,7 +1,7 @@
 // content.js - LMSX build
 (function () {
     'use strict';
-    const __LMSX_BUILD_STAMP__ = "2026-04-01T08:40:09.566Z";
+    const __LMSX_BUILD_STAMP__ = "2026-04-01T08:46:38.857Z";
 
     // -- main.js --
     const LMSX_VERSION = '3.6';
@@ -2447,12 +2447,6 @@
             if (!video) return false;
             const speed = 4;
             
-            // Force speed immediately and multiple times
-            video.playbackRate = speed;
-            
-            // Try to handle custom players (plyr, video.js, etc)
-            this.forceCustomPlayerSpeed(speed);
-            
             try {
                 await video.play();
             } catch (error) {
@@ -2460,7 +2454,10 @@
                 return false;
             }
 
-            // Force speed again after play starts
+            // Wait 2s for player to initialize, then force x4
+            await sleep(2000);
+            
+            // Force speed
             video.playbackRate = speed;
             this.forceCustomPlayerSpeed(speed);
 
@@ -2471,16 +2468,40 @@
         }
 
         forceCustomPlayerSpeed(speed) {
-            // Handle Plyr
-            const plyr = document.querySelector('.plyr');
-            if (plyr && plyr.plyr) plyr.plyr.speed = speed;
+            // Try Plyr API first
+            const plyrContainer = document.querySelector('.plyr');
+            if (plyrContainer) {
+                // Try to access Plyr instance
+                const plyrInstance = plyrContainer.plyr || window.plyr || (window.Plyr && window.Plyr.get && window.Plyr.get(plyrContainer));
+                if (plyrInstance && plyrInstance.speed) {
+                    plyrInstance.speed = speed;
+                    return;
+                }
+            }
+            
+            // Click speed menu then select 4x
+            const speedBtn = document.querySelector('button[data-plyr="speed"], .plyr__controls button[aria-label*="speed" i], .plyr button[title*="speed" i]');
+            if (speedBtn) {
+                speedBtn.click();
+                setTimeout(() => {
+                    // Find 4x option in the opened menu
+                    const menuItems = document.querySelectorAll('.plyr__menu__container [role="menuitem"], .plyr__menu [role="menuitem"], [data-plyr="speed"] + * [role="menuitem"]');
+                    for (const item of menuItems) {
+                        if (item.textContent?.includes('4') || item.getAttribute('data-value') === '4') {
+                            item.click();
+                            break;
+                        }
+                    }
+                }, 150);
+                return;
+            }
             
             // Handle video.js
             const vjs = document.querySelector('.video-js');
             if (vjs && vjs.player) vjs.player.playbackRate(speed);
             
-            // Generic speed buttons on page
-            document.querySelectorAll('[data-speed], [class*="speed"], [class*="playback-rate"]').forEach(el => {
+            // Generic speed buttons
+            document.querySelectorAll('[data-speed], [class*="speed"]').forEach(el => {
                 if (el.textContent?.includes('4') || el.getAttribute('data-speed') === '4') {
                     el.click();
                 }
