@@ -219,7 +219,7 @@ Page DOM
 → Nhấn F5. SPA đôi khi mount trước khi content script ready. Nếu vẫn không được: reload extension tại `chrome://extensions`.
 
 **AI trả lời sai / lỗi?**
-→ Kiểm tra API key còn hạn. Mở DevTools (`F12`) → Console → tìm `[LMSX]` để xem log chi tiết.
+→ Kiểm tra API key còn hạn. Xem log chi tiết ngay trên panel LMSX (vùng log màu đen). Hoặc mở DevTools (`F12`) → Console → tìm `[LMSX]` (chỉ hiện nếu bật verbose logs).
 
 **Video không tăng tốc?**
 → Một số bài dùng iframe cross-origin. `all_frames: false` trong manifest — cân nhắc đổi sang `true` nếu cần.
