@@ -3,7 +3,7 @@ async function init() {
     window.__lmsxInitialized = true;
 
     S.logger = createLogger();
-    S.logger.info('init', 'boot', `LMSX ${LMSX_VERSION} starting`);
+    S.logger.info('init', 'boot', `LMSx ${LMSX_VERSION} starting`);
 
     try {
         S.storage = createStorageAdapter();
@@ -13,6 +13,10 @@ async function init() {
         S.stats = store.stats;
         S.uiPrefs = store.uiPrefs;
         S.cache = store.cache;
+        if (S.settings.featureFlags.verboseLogs === true) {
+            S.settings.featureFlags.verboseLogs = false;
+            await S.storage.saveSettings(S.settings);
+        }
         S.runtime.mode = S.settings.featureFlags.compatBypass ? 'compat' : 'safe';
         S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys[S.settings.ai.provider] || '');
 
@@ -26,7 +30,7 @@ async function init() {
         S.ui?.sync?.();
         S.logger.info('init', 'ready', 'Panel ready and idle by default');
     } catch (error) {
-        console.error('[LMSX] init failed', error);
+        console.error('[LMSx] init failed', error);
         if (S.runtime) {
             S.runtime.lastError = { message: error.message, at: nowIso() };
             setState('error', { capability: 'error', detail: error.message });

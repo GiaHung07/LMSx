@@ -1,5 +1,12 @@
 const CSS = `
-:host{all:initial;color-scheme:dark;-webkit-font-smoothing:antialiased}
+:host{
+  all:initial;
+  color-scheme:dark;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  --lmsx-font-ui:'Segoe UI Variable','Segoe UI',system-ui,-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+  --lmsx-font-mono:'JetBrains Mono','Cascadia Code','Consolas','Segoe UI',monospace;
+}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 button,input,select{font:inherit}
 
@@ -13,7 +20,7 @@ button,input,select{font:inherit}
   width:300px;background:#0D0D10;
   border-radius:14px;border:.5px solid rgba(255,255,255,.07);
   overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden;
-  font-family:'JetBrains Mono',monospace;transition:border-radius .3s
+  font-family:var(--lmsx-font-ui);transition:border-radius .3s
 }
 .face.back{position:absolute;top:0;left:0;transform:rotateY(180deg)}
 
@@ -33,7 +40,7 @@ button,input,select{font:inherit}
 .dot.y:hover::after{content:'−';font-size:9px;color:rgba(0,0,0,.6);opacity:1}
 .dot.g:hover::after{content:'▶';font-size:6px;color:rgba(0,0,0,.6);opacity:1}
 
-.ptitle{flex:1;text-align:center;font-size:11.5px;font-weight:500;color:rgba(255,255,255,.34);letter-spacing:.09em}
+.ptitle{flex:1;text-align:center;font-size:11.5px;font-weight:500;color:rgba(255,255,255,.34);letter-spacing:.09em;font-family:var(--lmsx-font-mono)}
 .gear-btn{background:none;border:none;cursor:pointer;padding:8px;margin:-6px;display:flex;align-items:center;color:rgba(255,255,255,.28);transition:color .15s}
 .gear-btn:hover{color:rgba(255,255,255,.65)}
 
@@ -41,7 +48,7 @@ button,input,select{font:inherit}
 .collapsible.collapsed{max-height:0!important;opacity:0;pointer-events:none}
 
 .log-wrap{padding:11px 13px;min-height:105px;display:flex;flex-direction:column;max-height:200px;overflow:hidden}
-.log-line{display:flex;align-items:baseline;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.85;opacity:0;transform:translateY(3px);transition:opacity .2s,transform .2s}
+.log-line{display:flex;align-items:baseline;gap:6px;font-family:var(--lmsx-font-mono);font-size:11px;line-height:1.85;opacity:0;transform:translateY(3px);transition:opacity .2s,transform .2s}
 .log-line.vis{opacity:1;transform:none}
 .log-line.dim{opacity:.18}
 .lt{flex-shrink:0;width:13px;text-align:center;font-size:11px}
@@ -76,27 +83,26 @@ button,input,select{font:inherit}
 .api-block{margin-bottom:10px}
 .api-provider{display:flex;align-items:center;gap:6px;margin-bottom:5px}
 .pdot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
-.pdot.or{background:#7C5CFC}
 .pdot.gr{background:#F55036}
 .pname{font-size:11px;color:rgba(255,255,255,.56);font-weight:500;letter-spacing:.04em}
 .api-row{display:flex;gap:6px;align-items:center}
-.api-input{flex:1;background:#0a0a0d;border:.5px solid rgba(255,255,255,.08);border-radius:6px;padding:7px 9px;color:rgba(255,255,255,.72);font-size:11px;font-family:'JetBrains Mono',monospace;outline:none;transition:border-color .15s;min-width:0}
+.api-input{flex:1;background:#0a0a0d;border:.5px solid rgba(255,255,255,.08);border-radius:6px;padding:7px 9px;color:rgba(255,255,255,.72);font-size:11px;font-family:var(--lmsx-font-mono);outline:none;transition:border-color .15s;min-width:0}
 .api-input:focus{border-color:rgba(255,255,255,.22)}
 .api-input::placeholder{color:rgba(255,255,255,.12)}
 .eye-btn{background:#0a0a0d;border:.5px solid rgba(255,255,255,.08);border-radius:6px;cursor:pointer;padding:6px 8px;color:rgba(255,255,255,.22);transition:all .15s;flex-shrink:0;display:flex;align-items:center}
 .eye-btn:hover{border-color:rgba(255,255,255,.18);color:rgba(255,255,255,.55)}
 .divline{height:.5px;background:rgba(255,255,255,.04);margin:10px 0}
-.save-btn{width:100%;background:#172e1a;border:.5px solid rgba(40,200,64,.2);border-radius:7px;padding:8px;color:rgba(40,200,64,.75);font-size:11.5px;font-family:'JetBrains Mono',monospace;font-weight:500;cursor:pointer;transition:all .15s;letter-spacing:.04em}
+.save-btn{width:100%;background:#172e1a;border:.5px solid rgba(40,200,64,.2);border-radius:7px;padding:8px;color:rgba(40,200,64,.75);font-size:11.5px;font-family:var(--lmsx-font-mono);font-weight:500;cursor:pointer;transition:all .15s;letter-spacing:.04em}
 .save-btn:hover{background:#1d3820;border-color:rgba(40,200,64,.4);color:#28C840}
 .saved-hint{text-align:center;font-size:10.5px;color:rgba(40,200,64,.72);margin-top:7px;opacity:0;transition:opacity .25s;height:16px}
 .back-footer{display:flex;align-items:center;justify-content:space-between;margin-top:11px;padding-top:10px;border-top:.5px solid rgba(255,255,255,.04)}
-.back-btn{background:none;border:none;cursor:pointer;font-size:11px;color:rgba(255,255,255,.44);font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:4px;padding:0;transition:color .15s}
+.back-btn{background:none;border:none;cursor:pointer;font-size:11px;color:rgba(255,255,255,.44);font-family:var(--lmsx-font-mono);display:flex;align-items:center;gap:4px;padding:0;transition:color .15s}
 .back-btn:hover{color:rgba(255,255,255,.5)}
 .key-links{display:flex;gap:10px;align-items:center}
 .klink{font-size:10.5px;color:rgba(255,255,255,.44);text-decoration:none;display:flex;align-items:center;gap:3px;transition:color .15s}
 .klink:hover{color:rgba(255,255,255,.45)}
 
-.mini-dock{display:none;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;background:#0D0D10;border:.5px solid rgba(255,255,255,.08);color:rgba(255,255,255,.78);font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;box-shadow:0 8px 18px rgba(0,0,0,.35);transition:transform .15s,box-shadow .15s,color .15s,border-color .15s}
+.mini-dock{display:none;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;background:#0D0D10;border:.5px solid rgba(255,255,255,.08);color:rgba(255,255,255,.78);font-family:var(--lmsx-font-mono);font-size:11px;cursor:pointer;box-shadow:0 8px 18px rgba(0,0,0,.35);transition:transform .15s,box-shadow .15s,color .15s,border-color .15s}
 .mini-dock:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.9)}
 .mini-dock:active{transform:translateY(0)}
 .mini-dot{width:6px;height:6px;border-radius:50%;background:#FF5F57;box-shadow:0 0 6px rgba(255,95,87,.6)}
@@ -108,4 +114,3 @@ button,input,select{font:inherit}
   .card,.face{width:100%}
 }
 `;
-

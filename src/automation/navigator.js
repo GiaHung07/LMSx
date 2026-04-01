@@ -160,7 +160,7 @@ function findCurrentLessonIndex(candidates) {
 function pickNextLessonCandidate() {
     const candidates = collectLessonCandidates();
     if (!candidates.length) {
-        S.logger?.info('navigator', 'pick:empty', 'No lesson candidates found in sidebar');
+        S.logger?.info('navigator', 'pick:empty', 'Không tìm thấy bài học nào trong sidebar');
         return { candidate: null, candidates, currentIndex: -1 };
     }
     const currentIndex = findCurrentLessonIndex(candidates);
@@ -176,10 +176,10 @@ function pickNextLessonCandidate() {
         return { candidate: next, candidates, currentIndex };
     }
     if (currentIndex === candidates.length - 1) {
-        S.logger?.info('navigator', 'pick:last', 'Current is last candidate in list');
+        S.logger?.info('navigator', 'pick:last', 'Bài hiện tại là bài cuối trong danh sách');
         return { candidate: null, candidates, currentIndex };
     }
-    S.logger?.warn('navigator', 'pick:unknown-current', 'Khong xac dinh duoc bai hien tai, bo qua sidebar navigation');
+    S.logger?.warn('navigator', 'pick:unknown-current', 'Không xác định được bài hiện tại, bỏ qua điều hướng bằng sidebar');
     return { candidate: null, candidates, currentIndex };
 }
 
@@ -319,7 +319,7 @@ async function runAutomationCycle(reason = 'manual') {
             }
         }
 
-        setState('detecting-page', { capability: 'idle', detail: `Scan từ ${reason}` });
+        setState('detecting-page', { capability: 'idle', detail: `Đang quét từ ${reason}` });
         const caps = detectPageCapabilities(true);
         S.runtime.capabilities = serializeCapabilities(caps);
         S.runtime.currentCapability = caps.currentCapability;
@@ -383,7 +383,7 @@ async function runAutomationCycle(reason = 'manual') {
             const lastNav = S.runtime._lastAutoNavigate || 0;
             if (nowTs() - lastNav >= 3000) {
                 S.runtime._lastAutoNavigate = nowTs();
-                S.logger?.info('navigator', 'idle-navigate', `No actionable content on page, attempting navigation (reason: ${reason})`);
+                S.logger?.info('navigator', 'idle-navigate', `Không có nội dung cần xử lý, thử chuyển bài (lý do: ${reason})`);
                 const navigated = await navigateNext('idle-auto');
                 if (navigated) return;
                 // navigateNext already set 'completed' state if nothing found

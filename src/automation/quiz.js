@@ -134,6 +134,15 @@ function buildQuizPayload() {
     };
 }
 
+function handleMissingAiKeyForQuiz() {
+    const detail = getMissingAiKeyMessage();
+    S.logger?.warn('quiz', 'missing-key', detail);
+    S.ui?.toast?.(detail, 'error', 4500);
+    stopAutomation('missing-ai-key');
+    setState('waiting-user', { capability: 'quiz', detail });
+    return { ok: false, waitingUser: true, reason: 'missing-ai-key' };
+}
+
 function importAnswerSetFromText(rawText) {
     const parsed = safeJsonParse(rawText);
     const normalized = normalizeAnswerSet(parsed);
@@ -173,19 +182,19 @@ function findAnswerCandidate(questionRecord) {
     const importedMap = getImportedAnswerMap();
     const imported = importedMap.get(questionRecord.questionHash) || importedMap.get(questionRecord.legacyHash) || null;
     if (imported) {
-        S.logger?.debug('quiz', 'candidate:found', `Found imported answer for Q${questionRecord.index}`, { hash: questionRecord.questionHash.slice(0, 20) });
+        S.logger?.debug('quiz', 'candidate:found', `Đã tìm thấy đáp án import cho câu ${questionRecord.index + 1}`, { hash: questionRecord.questionHash.slice(0, 20) });
         return imported;
     }
     const cached = S.cache[questionRecord.questionHash] || S.cache[questionRecord.legacyHash] || null;
     if (cached) {
-        S.logger?.debug('quiz', 'candidate:cached', `Found cached answer for Q${questionRecord.index}`, { 
+        S.logger?.debug('quiz', 'candidate:cached', `Đã tìm thấy đáp án cache cho câu ${questionRecord.index + 1}`, { 
             hash: questionRecord.questionHash.slice(0, 20),
             hasVerified: cached.verifiedCorrect,
             confidence: cached.confidence,
             hasSelectedIndex: Number.isInteger(cached.selectedIndex)
         });
     } else {
-        S.logger?.debug('quiz', 'candidate:miss', `No cache for Q${questionRecord.index}`, { 
+        S.logger?.debug('quiz', 'candidate:miss', `Không có cache cho câu ${questionRecord.index + 1}`, { 
             hash: questionRecord.questionHash.slice(0, 20),
             legacyHash: questionRecord.legacyHash,
             cacheKeys: Object.keys(S.cache).slice(0, 5)
@@ -264,12 +273,12 @@ async function submitQuizIfPossible() {
     const capabilityNode = caps.quizSubmit?.matched ? caps.quizSubmit.node : null;
     const submitNode = capabilityNode || findQuizSubmitNodeFallback();
     if (!submitNode) {
-        S.logger?.warn('quiz', 'submit:missing', 'Khong tim thay nut nop bai');
+        S.logger?.warn('quiz', 'submit:missing', 'Không tìm thấy nút nộp bài');
         return { submitted: false, reason: 'submit-not-found' };
     }
     submitNode.scrollIntoView({ block: 'center', behavior: 'smooth' });
     await sleep(250);
-    S.logger?.info('quiz', 'submit:click', `Dang bam nut nop: ${normalizeText(submitNode.textContent || submitNode.getAttribute('aria-label') || 'submit')}`);
+    S.logger?.info('quiz', 'submit:click', `Đang bấm nút nộp: ${normalizeText(submitNode.textContent || submitNode.getAttribute('aria-label') || 'submit')}`);
     submitNode.click();
     return { submitted: true, reason: 'clicked-submit' };
 }
@@ -345,6 +354,9 @@ async function solveQuiz() {
     updateStats({ quizzesDetected: S.stats.quizzesDetected + 1 });
 
     const forceBatchAi = true;
+    if (forceBatchAi && !hasConfiguredAiKey()) {
+        return handleMissingAiKeyForQuiz();
+    }
     S.logger?.info('quiz', 'mode', forceBatchAi ? 'AI-first mode: copy -> batch AI -> fill' : 'Cache-first mode');
 
     const missingCandidates = [];
@@ -488,7 +500,7 @@ async function solveQuiz() {
     S.runtime.quiz.awaitingNetwork = true;
     S.runtime.quiz.lastSubmittedAt = nowTs();
     setState('running-quiz', { capability: 'quiz', detail: 'Đã nộp quiz, chờ phản hồi' });
-    S.logger?.info('quiz', 'submit', 'Submitted quiz automatically', { pending: S.runtime.quiz.pendingQuestionHashes.length });
+    S.logger?.info('quiz', 'submit', 'Đã tự động nộp quiz', { pending: S.runtime.quiz.pendingQuestionHashes.length });
     persistRuntimeSoon();
     return { ok: true, applied, submitted: true };
 }
@@ -609,7 +621,7 @@ function handleQuizNetworkPayload(payload) {
     S.runtime.quiz.attempts += 1;
     S.runtime.quiz.awaitingNetwork = false;
     const maxRetries = S.settings.automation.maxQuizRetries;
-    S.logger?.warn('quiz', 'submit:incorrect', `Attempt ${S.runtime.quiz.attempts}/${maxRetries}`);
+    S.logger?.warn('quiz', 'submit:incorrect', `Lần thử ${S.runtime.quiz.attempts}/${maxRetries}`);
     if (S.runtime.quiz.attempts < maxRetries) {
         setState('running-quiz', { capability: 'quiz', detail: `Quiz sai, thử lại lần ${S.runtime.quiz.attempts + 1}` });
         scheduleRun('quiz-retry', 1400);

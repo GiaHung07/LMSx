@@ -13,7 +13,7 @@
 
 **PTIT LMS Automation · Chrome Extension MV3**
 
-[![Version](https://img.shields.io/badge/version-3.6-22c55e?style=flat-square&logo=semanticrelease&logoColor=white)](https://github.com/Giahung07/LMSX)
+[![Version](https://img.shields.io/badge/version-3.6-22c55e?style=flat-square&logo=semanticrelease&logoColor=white)](https://github.com/Giahung07/LMSx)
 [![Chrome](https://img.shields.io/badge/Chrome-MV3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com)
 [![Edge](https://img.shields.io/badge/Edge-Supported-0078D4?style=flat-square&logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com)
 [![Node](https://img.shields.io/badge/Node.js-required-339933?style=flat-square&logo=nodedotjs&logoColor=white)](#bước-2--build)
@@ -31,13 +31,13 @@
 
 ## Tổng quan
 
-LMSX v3.6 là Chrome Extension Manifest V3 được viết lại hoàn toàn theo kiến trúc module hoá. Extension tự động xử lý toàn bộ chu trình học:
+LMSx v3.6 là Chrome Extension Manifest V3 được viết theo kiến trúc module hoá. Extension tự động xử lý toàn bộ chu trình học:
 
-```
-Video (x4) ──▶ Quiz (AI) ──▶ Chuyển bài ──▶ lặp lại
+```text
+Video (x4) -> Quiz (AI) -> Chuyển bài -> lặp lại
 ```
 
-Hệ thống dùng **Shadow DOM** để cách ly UI hoàn toàn khỏi trang LMS, **AES-GCM** để mã hoá session token, và **OpenRouter/Groq API** (Llama 3.3 70B) để giải trắc nghiệm chính xác cao.
+Hệ thống dùng **Shadow DOM** để cách ly UI khỏi trang LMS, **AES-GCM** để mã hoá session token, và hiện tại dùng **Groq API** để hỗ trợ giải quiz.
 
 ---
 
@@ -45,12 +45,12 @@ Hệ thống dùng **Shadow DOM** để cách ly UI hoàn toàn khỏi trang LMS
 
 | Module | Mô tả |
 |---|---|
-| `automation/video.js` | Autoplay muted, khoá tốc độ **4×**, phát hiện >98% để chuyển bài |
-| `automation/quiz.js` | Scrape câu hỏi → gửi **OpenRouter/Groq** (Llama 3.3 70B) → parse JSON → tự click đáp án |
-| `automation/navigator.js` | Tìm bài hiện tại trong sidebar, chỉ mở bài liền kề, fallback sang nút `Next` khi cần |
+| `automation/video.js` | Autoplay muted, khoá tốc độ **4x**, phát hiện gần hết video để chuyển bài |
+| `automation/quiz.js` | Scrape câu hỏi -> gửi **Groq** -> parse JSON -> tự click đáp án và nộp bài |
+| `automation/navigator.js` | Tìm bài hiện tại trong sidebar, đi bài liền kề, sang chapter kế tiếp khi cần |
 | `stealth/bypass.js` | Vô hiệu hoá chặn Copy/Cut/Select/ContextMenu của OpenEdX |
-| `ui/panel.js` | Floating panel **Shadow DOM** — drag, resize, minimize thành FAB |
-| `background.js` | Service worker: AES-GCM encrypt token, intercept `Authorization` header |
+| `ui/panel.js` | Floating panel Shadow DOM, drag, thu gọn, lưu key, hiển thị trạng thái |
+| `background.js` | Service worker cho session vault và message routing |
 | `inject.js` | Hook XHR/fetch trong page context, bridge event về content script |
 
 ---
@@ -59,210 +59,169 @@ Hệ thống dùng **Shadow DOM** để cách ly UI hoàn toàn khỏi trang LMS
 
 ### Yêu cầu
 
-- Chrome ≥ 109 hoặc Edge ≥ 109 (Manifest V3)
-- Node.js (bất kỳ version LTS nào)
+- Chrome >= 109 hoặc Edge >= 109
+- Node.js LTS
 
 ### Bước 1 — Lấy source
 
 ```bash
-git clone https://github.com/Giahung07/LMSX.git
-cd LMSX
+git clone https://github.com/Giahung07/LMSx.git
+cd LMSx
 ```
 
-hoặc tải ZIP → giải nén.
+Hoặc tải ZIP rồi giải nén.
 
 ### Bước 2 — Build
 
 ```bash
 node build.js
-# [build] added main.js
-# [build] added storage/schema.js
-# ...
-# [build] content.js updated (2026-xx-xx)
 ```
 
-> Trong quá trình dev: `node build.js --watch` để tự rebuild khi sửa file trong `src/`.
+Trong quá trình dev có thể dùng:
+
+```bash
+node build.js --watch
+```
 
 ### Bước 3 — Load vào Chrome
 
 1. Mở `chrome://extensions`
-2. Bật **Developer mode** (góc phải trên)
-3. Nhấn **Load unpacked** → chọn thư mục `LMSX`
-4. Icon LMSX xuất hiện trên toolbar
+2. Bật **Developer mode**
+3. Nhấn **Load unpacked**
+4. Chọn thư mục `LMSx`
 
 ---
 
-## Cấu hình API Key
+## Cấu hình API key
 
-LMSX hỗ trợ hai nhà cung cấp AI — cấu hình qua panel (icon ⚙ góc phải):
+Hiện tại LMSx chỉ dùng **Groq**.
 
-### OpenRouter
+1. Vào [console.groq.com/keys](https://console.groq.com/keys)
+2. Tạo API key
+3. Dán vào ô **Groq** trong panel cài đặt
+4. Nhấn **Lưu cài đặt**
 
-1. Vào [openrouter.ai/keys](https://openrouter.ai/keys) → tạo API key
-2. Dán vào ô **OpenRouter** trong panel
-3. Model mặc định: `llama-3.3-70b-versatile`
+Model mặc định đang dùng:
 
-### Groq
+```text
+llama-3.3-70b-versatile
+```
 
-1. Vào [console.groq.com/keys](https://console.groq.com/keys) → tạo API key
-2. Dán vào ô **Groq** trong panel
-3. Model mặc định: `llama-3.3-70b-versatile`
-
-> Không nhập API key → extension fallback sang chế độ phỏng đoán xoay vòng (vẫn pass quiz nhưng độ chính xác thấp hơn).
-
-Key được lưu qua `chrome.storage.sync` — không gửi ra ngoài ngoài API call đến nhà cung cấp đã chọn.
+Key được lưu qua `chrome.storage.sync` và đồng bộ vào cấu hình nội bộ của extension.
 
 ---
 
 ## Sử dụng
 
-Truy cập bất kỳ khoá học nào trên `lms.ptit.edu.vn` — panel LMSX tự động xuất hiện.
+Truy cập một khoá học trên `lms.ptit.edu.vn`, panel LMSx sẽ xuất hiện.
 
 ### Điều khiển panel
 
 | Thao tác | Hành vi |
 |---|---|
-| Toggle **Auto** | Bật/tắt toàn bộ automation của extension |
-| Dot 🔴 | Thu nhỏ panel thành nút mini dock |
-| Dot 🟡 | Thu gọn/mở rộng vùng log |
-| Dot 🟢 | Chạy / Dừng automation thủ công |
-| Icon ⚙️ | Xoay card sang cài đặt API key |
-| Kéo titlebar | Di chuyển panel trên màn hình |
-| Mini dock | Click để mở rộng panel khi đã thu nhỏ |
+| Toggle **Auto** | Bật/tắt automation |
+| Dot đỏ | Thu nhỏ panel |
+| Dot vàng | Thu gọn log |
+| Dot xanh | Chạy / Dừng thủ công |
+| Icon bánh răng | Mở mặt sau để nhập Groq key |
+| Kéo titlebar | Di chuyển panel |
 
-### Log panel
+### Trạng thái thường gặp
 
-```
-› Đọc câu hỏi...
-✓ Scrape xong
-› Gọi AI...
-✓ Nhận phản hồi
-› Đang điền đáp án...
-✓ Xong
+```text
+Dang chay video x4...
+Doc cau hoi...
+Goi AI...
+Dang dien dap an...
+Xong
 ```
 
 ---
 
 ## Kiến trúc
 
-```
-LMSX/
-├── manifest.json              MV3 config
-├── background.js              Service worker (AES-GCM vault, message router)
-├── content.js                 Build output — tự động tạo bởi build.js
-├── inject.js                  Page context hook (XHR/fetch proxy)
-├── obfuscate.js               Session hash cho class/event name
-├── build.js                   Module bundler
-│
+```text
+LMSx/
+├── manifest.json
+├── background.js
+├── content.js
+├── inject.js
+├── obfuscate.js
+├── build.js
 ├── src/
-│   ├── main.js                Global state & constants
-│   ├── init.js                Bootstrap
+│   ├── main.js
+│   ├── init.js
 │   ├── storage/
-│   │   ├── schema.js          Storage schema & defaults
-│   │   └── adapter.js         chrome.storage wrapper
 │   ├── runtime/
-│   │   ├── logger.js          Log system
-│   │   ├── state.js           Reactive state machine
-│   │   ├── selectors.js       DOM selector registry
-│   │   └── bridge.js          Content ↔ inject bridge
 │   ├── network/
-│   │   ├── providers.js       OpenRouter / Groq API client
-│   │   └── bridge.js          Network event relay
 │   ├── ui/
-│   │   ├── css.js             Shadow DOM stylesheet (Space Grotesk, JetBrains Mono)
-│   │   ├── html.js            Panel HTML template
-│   │   └── panel.js           Panel controller (drag, resize, flip, dot states)
 │   ├── automation/
-│   │   ├── video.js           Video speed lock & completion detection
-│   │   ├── quiz.js            Quiz scraper → AI → DOM click
-│   │   └── navigator.js       Lesson navigation loop
 │   └── stealth/
-│       └── bypass.js          Anti-block (copy/select/contextmenu)
-│
 └── assets/
-    ├── icons/                 icon16/32/48/128.png
+    ├── icons/
     └── fonts/
-        └── JetBrainsMono-Regular.woff2
 ```
 
-### Luồng xử lý quiz
+### Luồng quiz
 
-```
+```text
 Page DOM
-  │
-  ├─▶ quiz.js          scrape câu hỏi + choices
-  │
-  ├─▶ providers.js     POST → OpenRouter / Groq API
-  │     {
-  │       model: "llama-3.3-70b-versatile",
-  │       temperature: 0.1,
-  │       response_format: { type: "json_object" }
-  │     }
-  │
-  ├─▶ AI Response      { "reasoning": "...", "index": 2 }
-  │
-  └─▶ quiz.js          click choices[index] → submit
+  -> quiz.js scrape câu hỏi + đáp án
+  -> providers.js gọi Groq
+  -> quiz.js parse kết quả
+  -> click đáp án + nộp bài
 ```
 
 ### Luồng chuyển bài
 
-```
+```text
 Video/Quiz hoàn tất
-  │
-  ├─▶ navigator.js quét sidebar đang hiển thị
-  │
-  ├─▶ xác định bài hiện tại bằng URL / active class / style đang chọn
-  │
-  ├─▶ lấy phần tử đứng ngay sau bài hiện tại
-  │
-  └─▶ nếu không xác định chắc được bài hiện tại:
-        fallback sang nút Next thật trên trang
+  -> navigator.js xác định bài hiện tại
+  -> chọn bài liền kề trong chapter đang mở
+  -> nếu đang ở cuối chapter thì mở chapter kế tiếp
+  -> nếu không xác định được thì fallback sang nút Next thật trên trang
 ```
 
-### Bảo mật
+---
 
-- `Authorization` header của LMS được intercept bởi `background.js` và lưu **in-memory** với AES-GCM 256-bit
-- Vault tự xoá khi service worker suspend (`chrome.runtime.onSuspend`)
-- Class name và event name được hash ngẫu nhiên mỗi session qua `obfuscate.js`
-- API key chỉ tồn tại trong `chrome.storage.sync` — không bao giờ log ra console
+## Những thay đổi gần đây
+
+- Đổi tên hiển thị từ `LMSX` sang `LMSx`
+- Bỏ OpenRouter, chỉ giữ Groq
+- Sửa lỗi nhảy sai chapter khi tự chuyển bài
+- Sửa lỗi lặp video và không tự chuyển bài sau khi video xong
+- Sửa logic `Auto` để chỉ điều khiển automation
+- Tắt log console mặc định, chỉ giữ log khi thật sự cần debug
+- Cập nhật icon extension bằng ảnh mới trong `image.png`
 
 ---
 
 ## Troubleshooting
 
-**Panel không hiện?**
-→ Nhấn F5. SPA đôi khi mount trước khi content script ready. Nếu vẫn không được: reload extension tại `chrome://extensions`.
+**Panel không hiện?**  
+Reload extension ở `chrome://extensions`, sau đó F5 lại trang LMS.
 
-**AI trả lời sai / lỗi?**
-→ Kiểm tra API key còn hạn. Xem log chi tiết ngay trên panel LMSX (vùng log màu đen). Hoặc mở DevTools (`F12`) → Console → tìm `[LMSX]` (chỉ hiện nếu bật verbose logs).
+**Không gọi được AI?**  
+Kiểm tra Groq key, quota, hoặc timeout từ Groq. Hiện tại không còn fallback sang OpenRouter nữa.
 
-**Video không tăng tốc?**
-→ Một số bài dùng iframe cross-origin. `all_frames: false` trong manifest — cân nhắc đổi sang `true` nếu cần.
+**Lỗi kiểu `signal is aborted without reason`?**  
+Bản mới sẽ đổi lỗi này thành thông báo dễ hiểu hơn như timeout hoặc mất kết nối tới Groq.
 
-**Tự chuyển sai sang chương xa?**
-→ Logic mới chỉ cho phép mở bài đứng liền sau bài hiện tại trong sidebar. Nếu vẫn không chuyển đúng, mở DevTools và tìm log `[LMSX][navigator] pick:*` để xem extension đang nhận diện bài hiện tại là gì.
+**Tự chuyển sai bài?**  
+Logic hiện tại chỉ cố đi bài liền kề. Nếu sidebar của LMS render bất thường thì mới cần debug thêm.
 
-**`content.js` không tồn tại sau clone?**
-→ Chạy `node build.js` trước khi load unpacked.
-
----
-
-## Lịch sử phiên bản
-
-| Version | Highlights |
-|---|---|
-| **v3.6** | Modular src/, OpenRouter + Groq dual provider, Shadow DOM panel, AES-GCM vault, Stealth bypass |
-| **v1.0** | Monolithic script, x4 speed, Gemini only |
+**`content.js` không có sau khi clone?**  
+Chạy `node build.js`.
 
 ---
 
 ## Lưu ý
 
-> Dự án phục vụ mục đích cá nhân — tối ưu hoá thời gian học tập.
+> Dự án phục vụ mục đích cá nhân để tối ưu thời gian học.
 
-- Không phân phối lại dưới hình thức thương mại.
-- Tác giả không chịu trách nhiệm nếu hệ thống LMS ghi nhận hành vi bất thường.
-- Toàn bộ dữ liệu nhạy cảm được mã hoá cục bộ, không gửi về server của tác giả.
+- Không phân phối lại dưới hình thức thương mại
+- Tác giả không chịu trách nhiệm nếu LMS ghi nhận hành vi bất thường
+- Dữ liệu nhạy cảm được lưu cục bộ
 
 ---
 

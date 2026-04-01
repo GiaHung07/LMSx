@@ -1,7 +1,7 @@
 // content.js - LMSX build
 (function () {
     'use strict';
-    const __LMSX_BUILD_STAMP__ = "2026-04-01T14:43:12.964Z";
+    const __LMSX_BUILD_STAMP__ = "2026-04-01T15:49:15.242Z";
 
     // -- main.js --
     const LMSX_VERSION = '3.6';
@@ -138,7 +138,7 @@
         cache: 'lmsx_cache',
     };
 
-    const AI_PROVIDERS = ['groq', 'openrouter', 'gemini', 'custom'];
+    const AI_PROVIDERS = ['groq'];
     const STATE_VALUES = ['idle', 'detecting-page', 'ready', 'running-video', 'waiting-ai', 'running-quiz', 'waiting-user', 'paused', 'error', 'completed'];
     const RUNNER_MAX_RETRIES = 3;
 
@@ -149,12 +149,7 @@
                 provider: 'groq',
                 keys: {
                     groq: '',
-                    openrouter: '',
-                    gemini: '',
-                    custom: '',
                 },
-                customBaseUrl: 'https://api.openai.com/v1',
-                customModel: 'gpt-4o-mini',
             },
             automation: {
                 videoSpeed: 4,
@@ -254,7 +249,7 @@
     }
 
     function normalizeProvider(value) {
-        return AI_PROVIDERS.includes(value) ? value : 'gemini';
+        return AI_PROVIDERS.includes(value) ? value : 'groq';
     }
 
     function normalizeSettings(input) {
@@ -267,12 +262,7 @@
                 provider: normalizeProvider(value.ai?.provider),
                 keys: {
                     groq: typeof keys.groq === 'string' ? keys.groq : defaults.ai.keys.groq,
-                    openrouter: typeof keys.openrouter === 'string' ? keys.openrouter : defaults.ai.keys.openrouter,
-                    gemini: typeof keys.gemini === 'string' ? keys.gemini : defaults.ai.keys.gemini,
-                    custom: typeof keys.custom === 'string' ? keys.custom : defaults.ai.keys.custom,
                 },
-                customBaseUrl: typeof value.ai?.customBaseUrl === 'string' ? value.ai.customBaseUrl : defaults.ai.customBaseUrl,
-                customModel: typeof value.ai?.customModel === 'string' ? value.ai.customModel : defaults.ai.customModel,
             },
             automation: {
                 videoSpeed: clamp(Number(value.automation?.videoSpeed) || defaults.automation.videoSpeed, 1, 16),
@@ -440,14 +430,13 @@
 
 
 
-
     // -- storage/adapter.js --
     function chromeStorageGet(keys) {
         return new Promise(resolve => {
             try {
                 chrome.storage.local.get(keys, result => {
                     if (chrome.runtime.lastError) {
-                        console.warn('[LMSX] storage get error:', chrome.runtime.lastError.message);
+                        console.warn('[LMSx] storage get error:', chrome.runtime.lastError.message);
                         resolve({});
                         return;
                     }
@@ -464,7 +453,7 @@
             try {
                 chrome.storage.local.set(payload, () => {
                     if (chrome.runtime.lastError) {
-                        console.warn('[LMSX] storage set error:', chrome.runtime.lastError.message);
+                        console.warn('[LMSx] storage set error:', chrome.runtime.lastError.message);
                     }
                     resolve();
                 });
@@ -505,6 +494,10 @@
                     }
                 });
 
+                localStorage.removeItem('lms_openrouter_key');
+                localStorage.removeItem('lms_gemini_key');
+                localStorage.removeItem('lms_custom_key');
+
                 for (let i = 0; i < localStorage.length; i++) {
                     const legacyKey = localStorage.key(i);
                     if (!legacyKey || !legacyKey.startsWith('lms_q_')) continue;
@@ -543,7 +536,10 @@
             const migrated = migrateLegacyLocalStorage(store);
             store.runtime.active = false;
             store.runtime.state = 'idle';
+            store.runtime.lastError = null;
             store.runtime.lastUrl = location.href;
+            store.runtime.lastAction = 'Đang chờ';
+            store.runtime.logs = [];
             store.runtime.runner = normalizeRunner(store.runtime.runner);
 
             if (migrated || !raw[STORAGE_KEYS.settings] || !raw[STORAGE_KEYS.runtime] || !raw[STORAGE_KEYS.stats] || !raw[STORAGE_KEYS.uiPrefs]) {
@@ -611,7 +607,7 @@
 
         function push(level, module, event, detail = '', payload) {
             const verboseLogs = S.settings?.featureFlags?.verboseLogs === true;
-            const allowLevel = level === 'warn' || level === 'error' || verboseLogs;
+            const allowLevel = verboseLogs;
             if (!allowLevel) return null;
 
             const entry = {
@@ -630,8 +626,8 @@
                 S.runtime.logs = S.runtime.logs.slice(-maxEntries);
             }
 
-            if (verboseLogs || level === 'error') {
-                const prefix = `[LMSX][${module}] ${event}`;
+            if (verboseLogs) {
+                const prefix = `[LMSx][${module}] ${event}`;
                 const message = entry.detail ? `${prefix} ${entry.detail}` : prefix;
                 const sink = level === 'error' ? console.error : level === 'warn' ? console.warn : level === 'debug' ? console.debug : console.log;
                 if (payload !== undefined) sink(message, payload);
@@ -1092,7 +1088,6 @@
     function isLikelyApiKey(provider, value = '') {
         const v = String(value || '').trim();
         if (provider === 'groq') return v.startsWith('gsk_');
-        if (provider === 'openrouter') return v.startsWith('sk-or-') || v.length > 20;
         return false;
     }
 
@@ -1103,25 +1098,13 @@
         }
 
         try {
-            let res;
-            if (provider === 'groq') {
-                res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-                    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: 'hi' }], max_tokens: 5 }),
-                });
-            } else if (provider === 'openrouter') {
-                res = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
-                    method: 'POST', headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${key}`,
-                        'HTTP-Referer': location.origin || 'https://lmsx.local',
-                        'X-Title': 'LMSX Quiz Assistant',
-                    },
-                    body: JSON.stringify({ model: 'meta-llama/llama-3.3-70b-instruct:free', messages: [{ role: 'user', content: 'hi' }], max_tokens: 5 }),
-                });
-            } else {
-                 return { ok: false, status: 'invalid', message: 'Provider không được hỗ trợ' };
+            if (provider !== 'groq') {
+                return { ok: false, status: 'invalid', message: 'Provider không được hỗ trợ' };
             }
+            const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+                body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: 'hi' }], max_tokens: 5 }),
+            });
 
             const data = await res.json().catch(() => ({}));
             if (res.ok && !data.error) return { ok: true, status: 'ok', message: 'Key hoạt động bình thường' };
@@ -1140,21 +1123,17 @@
         }
     }
     function getAiProviderConfig() {
-        const provider = normalizeProvider(S.settings?.ai?.provider);
-        const key = S.settings?.ai?.keys?.[provider] || '';
-        return { provider, key };
+        return { provider: 'groq', key: S.settings?.ai?.keys?.groq || '' };
     }
 
-    function getFallbackProviderConfig(excludeProvider) {
-        const fallbackOrder = ['groq', 'openrouter'];
-        for (const provider of fallbackOrder) {
-            if (provider === excludeProvider) continue;
-            const key = S.settings?.ai?.keys?.[provider] || '';
-            if (key && !isProviderBlocked(provider, key)) {
-                return { provider, key };
-            }
-        }
-        return null;
+    function hasConfiguredAiKey() {
+        const { provider, key } = getAiProviderConfig();
+        const normalizedKey = sanitizeAiKeyInput(key);
+        return !!normalizedKey && isLikelyApiKey(provider, normalizedKey);
+    }
+
+    function getMissingAiKeyMessage() {
+        return 'Thiếu Groq API key. Hãy mở Cài đặt và nhập key.';
     }
 
     function isProviderBlocked(provider, key) {
@@ -1188,6 +1167,27 @@
         const match = String(message || '').match(/retry in\s+([0-9]+(?:\.[0-9]+)?)s/i);
         if (!match) return 0;
         return Math.max(0, Math.ceil(Number(match[1]) * 1000));
+    }
+
+    function normalizeAiErrorMessage(error) {
+        const rawMessage = String(error?.message || error || '').trim();
+        const rawName = String(error?.name || '').trim();
+        const text = `${rawName} ${rawMessage}`.toLowerCase();
+
+        if (!text) return 'Lỗi kết nối AI';
+        if (
+            text.includes('aborterror') ||
+            text.includes('signal is aborted') ||
+            text.includes('aborted without reason') ||
+            text.includes('the operation was aborted') ||
+            text.includes('operation was aborted')
+        ) {
+            return 'Yêu cầu AI hết thời gian phản hồi';
+        }
+        if (text.includes('failed to fetch') || text.includes('networkerror') || text.includes('load failed')) {
+            return 'Không thể kết nối tới Groq';
+        }
+        return rawMessage || 'Lỗi kết nối AI';
     }
 
     function isPermanentAiError(message = '') {
@@ -1228,7 +1228,7 @@
         clearRunnerTimer?.();
         setActive(false, 'fatal-ai-error');
 
-        const PROVIDER_LABELS = { groq: 'Groq', openrouter: 'OpenRouter' };
+        const PROVIDER_LABELS = { groq: 'Groq' };
         const providerLabel = PROVIDER_LABELS[provider] || provider;
         let vnMessage = 'Key không hợp lệ';
         const text = String(message || '').toLowerCase();
@@ -1249,7 +1249,7 @@
     }
 
     function handleTemporaryAiThrottle(provider, key, message) {
-        const PROVIDER_LABELS = { groq: 'Groq', openrouter: 'OpenRouter' };
+        const PROVIDER_LABELS = { groq: 'Groq' };
         const providerLabel = PROVIDER_LABELS[provider] || provider;
         const retryMs = parseRetryAfterMs(message) || 10000;
         const retryAt = nowTs() + retryMs;
@@ -1271,38 +1271,189 @@
         });
     }
 
-    function buildAiPrompt(question, choices) {
-        return `You are a world-class expert in Marxist Political Economy and Vietnamese university multiple-choice exams.
-    Use rigorous reasoning internally to identify concept, detect traps, eliminate wrong choices, and select the most academically correct option.
+    const SUBJECT_PROFILES = [
+        {
+            id: 'marxist_political_economy',
+            label: 'Kinh tế chính trị Mác-Lênin',
+            patterns: [
+                /kinh tế chính trị/i,
+                /mác\s*-?\s*lênin/i,
+                /marxist political economy/i,
+                /hàng hoá|giá trị sử dụng|giá trị hàng hóa|quy luật giá trị|lao động trừu tượng|lao động cụ thể/i,
+            ],
+            guidance: [
+                'Ưu tiên định nghĩa đúng theo giáo trình Kinh tế chính trị Mác-Lênin, không suy luận theo nghĩa đời thường.',
+                'Phân biệt rất kỹ các cặp khái niệm: hàng hóa / sản phẩm, giá trị / giá trị sử dụng, lao động cụ thể / lao động trừu tượng, lao động tư nhân / lao động xã hội.',
+                'Cảnh giác với đáp án nghe hợp lý nhưng sai đúng một cụm từ như công hữu, công cộng, sở hữu, phân công lao động xã hội, tách biệt kinh tế.',
+            ],
+        },
+        {
+            id: 'marxist_philosophy',
+            label: 'Triết học Mác-Lênin',
+            patterns: [
+                /triết học/i,
+                /duy vật biện chứng|duy vật lịch sử|lượng chất|phủ định của phủ định|mâu thuẫn biện chứng|ý thức xã hội/i,
+            ],
+            guidance: [
+                'Ưu tiên khái niệm chuẩn của Triết học Mác-Lênin theo giáo trình Việt Nam.',
+                'Phân biệt bản chất, hiện tượng, nội dung, hình thức, nguyên nhân, kết quả, khả năng, hiện thực và các cặp phạm trù tương tự.',
+                'Với câu hỏi quy luật hay nguyên lý, chọn đáp án đúng và đầy đủ nhất, tránh đáp án chỉ đúng một phần.',
+            ],
+        },
+        {
+            id: 'scientific_socialism',
+            label: 'Chủ nghĩa xã hội khoa học',
+            patterns: [
+                /chủ nghĩa xã hội khoa học/i,
+                /cnxh khoa học/i,
+                /sứ mệnh lịch sử|giai cấp công nhân|thời kỳ quá độ|nhà nước xã hội chủ nghĩa/i,
+            ],
+            guidance: [
+                'Ưu tiên lập luận đúng theo giáo trình Chủ nghĩa xã hội khoa học của các trường đại học Việt Nam.',
+                'Phân biệt điều kiện khách quan, nhân tố chủ quan, đặc trưng xã hội chủ nghĩa, thời kỳ quá độ và sứ mệnh lịch sử của giai cấp công nhân.',
+            ],
+        },
+        {
+            id: 'ho_chi_minh_thought',
+            label: 'Tư tưởng Hồ Chí Minh',
+            patterns: [
+                /tư tưởng hồ chí minh/i,
+                /hồ chí minh/i,
+                /độc lập dân tộc gắn liền với chủ nghĩa xã hội|đại đoàn kết|đạo đức cách mạng/i,
+            ],
+            guidance: [
+                'Ưu tiên nội dung đúng theo giáo trình Tư tưởng Hồ Chí Minh và các mệnh đề chuẩn trong học phần.',
+                'Cẩn thận với các đáp án gần nghĩa nhưng sai ở mức độ, phạm vi hoặc thứ tự tư tưởng.',
+            ],
+        },
+        {
+            id: 'general_political_theory',
+            label: 'Lý luận chính trị',
+            patterns: [],
+            guidance: [
+                'Ưu tiên đáp án đúng theo giáo trình đại học Việt Nam và thuật ngữ chuẩn của môn học.',
+                'Không chọn theo suy luận đời thường nếu đáp án lệch câu chữ so với định nghĩa học thuật.',
+            ],
+        },
+    ];
 
-    Question:
-    ${question}
+    function getRelevantPageTexts() {
+        const selectors = [
+            'title',
+            'h1',
+            'h2',
+            '.ant-breadcrumb',
+            '[class*="course"]',
+            '[class*="Course"]',
+            '[class*="header"]',
+            '[class*="Header"]',
+            '[class*="lesson"]',
+        ];
+        const values = new Set();
 
-    Choices:
-    ${choices.map((choice, index) => `[${index}] ${choice}`).join('\n')}
+        const pushText = text => {
+            const normalized = normalizeText(text || '');
+            if (normalized.length >= 4) values.add(normalized.slice(0, 240));
+        };
 
-    STRICT OUTPUT RULES:
-    - Return ONLY one raw JSON object
-    - No markdown, no code fences, no text outside JSON
-    - selectedIndex must be an integer matching one [N] option
+        pushText(document.title || '');
+        selectors.forEach(selector => {
+            document.querySelectorAll(selector).forEach(node => {
+                if (!(node instanceof HTMLElement)) return;
+                pushText(node.innerText || node.textContent || '');
+            });
+        });
 
-    Return EXACTLY this schema:
+        return [...values].slice(0, 16);
+    }
+
+    function detectSubjectProfile(question = '', choices = [], extraTexts = []) {
+        const haystack = [
+            question,
+            ...choices,
+            ...extraTexts,
+            ...getRelevantPageTexts(),
+        ].join('\n').toLowerCase();
+
+        let best = SUBJECT_PROFILES[SUBJECT_PROFILES.length - 1];
+        let bestScore = -1;
+        for (const profile of SUBJECT_PROFILES) {
+            const score = profile.patterns.reduce((sum, pattern) => sum + (pattern.test(haystack) ? 1 : 0), 0);
+            if (score > bestScore) {
+                best = profile;
+                bestScore = score;
+            }
+        }
+        return best;
+    }
+
+    function buildSubjectContextBlock(profile, question, choices, extraTexts = []) {
+        const pageTexts = [...new Set([...extraTexts, ...getRelevantPageTexts()])].slice(0, 6);
+        const contextLines = [];
+        contextLines.push(`Subject guess: ${profile.label}`);
+        if (pageTexts.length) {
+            contextLines.push(`Detected page context: ${pageTexts.join(' | ')}`);
+        }
+        contextLines.push(`Question focus: ${question}`);
+        contextLines.push(`Choices count: ${choices.length}`);
+        return contextLines.join('\n');
+    }
+
+    function buildSharedPromptRules(profile) {
+        const guidanceLines = profile.guidance.map(line => `- ${line}`).join('\n');
+        return `You are an expert assistant for Vietnamese university multiple-choice exams.
+    Your task is to answer according to the correct academic meaning of the specific subject, not according to casual everyday wording.
+
+    Subject-specific guidance:
+    ${guidanceLines}
+
+    General reasoning rules:
+    - First identify the exact concept, law, category, figure, period, or definition being asked.
+    - Watch carefully for trap words such as "không", "ngoại trừ", "sai", "đúng nhất", "đầy đủ nhất", "bao gồm", "mọi", "tất cả", "chỉ", "duy nhất".
+    - If several options seem plausible, choose the one that is most standard, most textbook-accurate, and most complete.
+    - Reject options that are broadly true in life but not the formal textbook definition.
+    - selectedValue must exactly match one option text from the provided choices.
+
+    Strict output rules:
+    - Return ONLY one raw JSON object.
+    - No markdown, no code fences, no explanation outside JSON.
+    - selectedIndex must be a 0-based integer matching one provided option.
+    - selectedValue must copy the exact option text.
+    - reason must be short and specific.
+
+    Return exactly this schema:
     {"selectedIndex": <integer>, "selectedValue": "<exact choice text>", "confidence": 0.95, "reason": "<short rationale>"}`;
     }
 
-    function buildAiVerifyPrompt(question, choices, candidateIndex) {
-        return `You are validating a multiple-choice answer for a Vietnamese Marxist Political Economy exam.
-    Check whether candidate option [${candidateIndex}] is truly the best answer.
-    If it is wrong, pick the correct option.
+    function buildAiPrompt(question, choices, extraTexts = []) {
+        const profile = detectSubjectProfile(question, choices, extraTexts);
+        return `${buildSharedPromptRules(profile)}
+
+    ${buildSubjectContextBlock(profile, question, choices, extraTexts)}
 
     Question:
     ${question}
 
     Choices:
-    ${choices.map((choice, index) => `[${index}] ${choice}`).join('\n')}
+    ${choices.map((choice, index) => `[${index}] ${choice}`).join('\n')}`;
+    }
 
-    Return ONLY one JSON object, no markdown:
-    {"selectedIndex": <integer>, "selectedValue": "<exact choice text>", "confidence": 0.95, "reason": "<short rationale>"}`;
+    function buildAiVerifyPrompt(question, choices, candidateIndex, extraTexts = []) {
+        const profile = detectSubjectProfile(question, choices, extraTexts);
+        return `${buildSharedPromptRules(profile)}
+
+    You are validating a previously selected answer.
+    - Candidate option to verify: [${candidateIndex}]
+    - Check whether it is truly the best answer according to the textbook meaning of ${profile.label}.
+    - If it is not the best answer, replace it with the correct one.
+
+    ${buildSubjectContextBlock(profile, question, choices, extraTexts)}
+
+    Question:
+    ${question}
+
+    Choices:
+    ${choices.map((choice, index) => `[${index}] ${choice}`).join('\n')}`;
     }
 
     function normalizeAiAnswer(raw, questionHash, choices, provider) {
@@ -1343,31 +1494,11 @@
         try {
             const response = await fetch(url, { ...options, signal: controller.signal });
             return response;
+        } catch (error) {
+            throw new Error(normalizeAiErrorMessage(error));
         } finally {
             clearTimeout(id);
         }
-    }
-
-    async function callOpenRouterProvider(key, prompt) {
-        const response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${key}`,
-                'HTTP-Referer': location.origin || 'https://lmsx.local',
-                'X-Title': 'LMSX Quiz Assistant',
-            },
-            body: JSON.stringify({
-                model: 'meta-llama/llama-3.3-70b-instruct:free',
-                temperature: 0.1,
-                response_format: { type: 'json_object' },
-                messages: [{ role: 'user', content: prompt }],
-            }),
-        });
-        const data = await response.json();
-        if (data.error) throw new Error(data.error.message || 'OpenRouter request failed');
-        const content = data.choices?.[0]?.message?.content || '';
-        return safeJsonParse(content.replace(/```json|```/gi, '').trim());
     }
 
     async function callGroqProvider(key, prompt) {
@@ -1390,63 +1521,59 @@
         const { provider, key } = getAiProviderConfig();
         if (!key) return null;
         clearAiBlockIfKeyChanged(provider, key);
-        if (isProviderBlocked(provider, key)) {
-            // Try fallback
-            const fallback = getFallbackProviderConfig(provider);
-            if (fallback) {
-                S.logger?.info('ai', 'fallback:attempt', `Primary ${provider} blocked, trying ${fallback.provider}`);
-                return resolveWithProvider(fallback.provider, fallback.key, questionRecord);
-            }
-            return null;
-        }
+        if (isProviderBlocked(provider, key)) return null;
         return resolveWithProvider(provider, key, questionRecord);
     }
 
     async function resolveWithProvider(provider, key, questionRecord, options = {}) {
         const silent = options.silent === true;
-        const prompt = options.promptOverride || buildAiPrompt(questionRecord.questionText, questionRecord.choiceTexts);
+        const prompt = options.promptOverride || buildAiPrompt(
+            questionRecord.questionText,
+            questionRecord.choiceTexts,
+            [questionRecord.questionText, ...(questionRecord.choiceTexts || [])],
+        );
         if (!silent) {
             S.logger?.info('ai', 'request', `Provider ${provider}`, { questionHash: questionRecord.questionHash });
             setState('waiting-ai', { capability: 'quiz', detail: `Đang hỏi ${provider}` });
         }
         try {
-            let raw = null;
-            if (provider === 'groq') raw = await callGroqProvider(key, prompt);
-            else raw = await callOpenRouterProvider(key, prompt);
+            const raw = await callGroqProvider(key, prompt);
             if (!silent) {
                 S.logger?.debug('ai', 'single:raw', 'Raw AI response', { raw: JSON.stringify(raw).slice(0, 300) });
             }
             const normalized = normalizeAiAnswer(raw, questionRecord.questionHash, questionRecord.choiceTexts, provider);
-            if (!normalized) throw new Error('AI response did not match schema');
+            if (!normalized) throw new Error('Phản hồi AI không đúng định dạng');
             return normalized;
         } catch (error) {
-            S.logger?.warn('ai', 'request:failed', error.message, { provider, questionHash: questionRecord.questionHash, silent });
-            if (isPermanentAiError(error.message)) {
-                handlePermanentAiFailure(provider, key, error.message);
-            } else if (isTemporaryAiThrottle(error.message)) {
-                handleTemporaryAiThrottle(provider, key, error.message);
-                // Try fallback on rate limit
-                const fallback = getFallbackProviderConfig(provider);
-                if (fallback) {
-                    S.logger?.info('ai', 'fallback:rate-limit', `Trying ${fallback.provider} after ${provider} rate limited`);
-                    return resolveWithProvider(fallback.provider, fallback.key, questionRecord, options);
-                }
+            const message = normalizeAiErrorMessage(error);
+            S.logger?.warn('ai', 'request:failed', message, { provider, questionHash: questionRecord.questionHash, silent });
+            if (isPermanentAiError(message)) {
+                handlePermanentAiFailure(provider, key, message);
+            } else if (isTemporaryAiThrottle(message)) {
+                handleTemporaryAiThrottle(provider, key, message);
             } else {
-                if (!silent) S.ui?.toast?.(`Kết nối lỗi: ${error.message}`, 'error', 4500);
+                if (!silent) S.ui?.toast?.(`Kết nối lỗi: ${message}`, 'error', 4500);
             }
             return null;
         }
     }
 
     function buildAiBatchPrompt(questionsList) {
-        let block = `You are a world-class expert in Marxist Political Economy, Vietnamese academic curriculum, and multiple-choice exam analysis.
-    Use rigorous internal reasoning for each question: identify concept, detect traps (NOT/EXCEPT/overgeneralization), eliminate wrong options, then pick the most precise answer.
+        const extraTexts = questionsList.flatMap(q => [q.questionText, ...(q.choiceTexts || [])]).slice(0, 40);
+        const profile = detectSubjectProfile('', [], extraTexts);
+        let block = `${buildSharedPromptRules(profile)}
 
-    I have ${questionsList.length} multiple-choice questions. Answer ALL of them.
-    Return ONLY a JSON object. No markdown fences. No text outside JSON.
-    The JSON must have an "answers" array with EXACTLY ${questionsList.length} elements (one per question, in order).
-    Each element schema:
+    You will answer a batch of ${questionsList.length} multiple-choice questions from the same course context.
+    Subject focus for this batch: ${profile.label}
+
+    Batch output rules:
+    - Return ONLY one JSON object.
+    - The JSON must contain an "answers" array with EXACTLY ${questionsList.length} elements in the same order as the questions.
+    - Each answer object must use this schema:
     {"selectedIndex": <0-based integer>, "selectedValue": "<exact option text>", "confidence": 0.95, "reason": "<very short rationale>"}
+
+    Detected page context:
+    ${getRelevantPageTexts().slice(0, 6).join(' | ') || 'N/A'}
 
     `;
         questionsList.forEach((q, i) => {
@@ -1477,9 +1604,8 @@
         if (!riskyIndexes.length) return results;
 
         const maxRechecks = Math.min(3, riskyIndexes.length);
-        const fallback = getFallbackProviderConfig(provider);
-        const recheckProvider = fallback?.provider || provider;
-        const recheckKey = fallback?.key || key;
+        const recheckProvider = provider;
+        const recheckKey = key;
         const next = [...results];
 
         S.logger?.info('ai', 'batch:recheck:start', `Rechecking ${maxRechecks}/${riskyIndexes.length} risky answers`, {
@@ -1491,7 +1617,12 @@
             const questionRecord = questionRecords[idx];
             const current = next[idx];
             const rechecked = await resolveWithProvider(recheckProvider, recheckKey, questionRecord, { silent: true });
-            const verifyPrompt = buildAiVerifyPrompt(questionRecord.questionText, questionRecord.choiceTexts, rechecked?.selectedIndex ?? current?.selectedIndex ?? 0);
+            const verifyPrompt = buildAiVerifyPrompt(
+                questionRecord.questionText,
+                questionRecord.choiceTexts,
+                rechecked?.selectedIndex ?? current?.selectedIndex ?? 0,
+                [questionRecord.questionText, ...(questionRecord.choiceTexts || [])],
+            );
             const verified = await resolveWithProvider(recheckProvider, recheckKey, questionRecord, {
                 silent: true,
                 promptOverride: verifyPrompt,
@@ -1518,14 +1649,7 @@
         const { provider, key } = getAiProviderConfig();
         if (!key || questionRecords.length === 0) return null;
         clearAiBlockIfKeyChanged(provider, key);
-        if (isProviderBlocked(provider, key)) {
-            const fallback = getFallbackProviderConfig(provider);
-            if (fallback) {
-                S.logger?.info('ai', 'fallback:attempt', `Primary ${provider} blocked, trying ${fallback.provider} for batch`);
-                return resolveBatchWithProvider(fallback.provider, fallback.key, questionRecords);
-            }
-            return null;
-        }
+        if (isProviderBlocked(provider, key)) return null;
         return resolveBatchWithProvider(provider, key, questionRecords);
     }
 
@@ -1549,9 +1673,7 @@
         });
         setState('waiting-ai', { capability: 'quiz', detail: `Đang hỏi AI ${questionRecords.length} câu cùng lúc` });
         try {
-            let raw = null;
-            if (provider === 'groq') raw = await callGroqProvider(key, prompt);
-            else raw = await callOpenRouterProvider(key, prompt);
+            const raw = await callGroqProvider(key, prompt);
 
             S.logger?.info('ai', 'batch:raw', `Raw batch response type=${typeof raw}`, { rawPreview: JSON.stringify(raw).slice(0, 800) });
             S.logger?.debug('ai', 'batch:raw:full', `Full response for debug`, { raw: JSON.stringify(raw) });
@@ -1570,7 +1692,7 @@
                 const possibleArrays = Object.values(raw).filter(v => Array.isArray(v));
                 if (possibleArrays.length === 1) {
                     answers = possibleArrays[0];
-                    S.logger?.info('ai', 'batch:fallback', `Found answers array in key other than 'answers'`, { count: answers.length });
+                    S.logger?.info('ai', 'batch:fallback', `Tìm thấy mảng đáp án ở key khác "answers"`, { count: answers.length });
                 }
             }
 
@@ -1580,7 +1702,7 @@
                     rawType: typeof raw,
                     rawPreview: JSON.stringify(raw).slice(0, 800) 
                 });
-                throw new Error('AI response did not contain answers array');
+                throw new Error('Phản hồi AI không chứa mảng đáp án');
             }
 
             S.logger?.info('ai', 'batch:parsed', `Got ${answers.length} answers for ${questionRecords.length} questions`);
@@ -1640,19 +1762,14 @@
 
             return validCount > 0 ? refinedResults : null;
         } catch (error) {
-            S.logger?.warn('ai', 'request:failed', error.message, { provider, batchCount: questionRecords.length });
-            if (isPermanentAiError(error.message)) {
-                handlePermanentAiFailure(provider, key, error.message);
-            } else if (isTemporaryAiThrottle(error.message)) {
-                handleTemporaryAiThrottle(provider, key, error.message);
-                // Try fallback on rate limit
-                const fallback = getFallbackProviderConfig(provider);
-                if (fallback) {
-                    S.logger?.info('ai', 'fallback:rate-limit', `Trying ${fallback.provider} for batch after ${provider} rate limited`);
-                    return resolveBatchWithProvider(fallback.provider, fallback.key, questionRecords);
-                }
+            const message = normalizeAiErrorMessage(error);
+            S.logger?.warn('ai', 'request:failed', message, { provider, batchCount: questionRecords.length });
+            if (isPermanentAiError(message)) {
+                handlePermanentAiFailure(provider, key, message);
+            } else if (isTemporaryAiThrottle(message)) {
+                handleTemporaryAiThrottle(provider, key, message);
             } else {
-                S.ui?.toast?.(`Lỗi phân tích: ${error.message}`, 'error', 4500);
+                S.ui?.toast?.(`Lỗi phân tích: ${message}`, 'error', 4500);
             }
             return null;
         }
@@ -1722,7 +1839,14 @@
 
     // -- ui/css.js --
     const CSS = `
-    :host{all:initial;color-scheme:dark;-webkit-font-smoothing:antialiased}
+    :host{
+      all:initial;
+      color-scheme:dark;
+      -webkit-font-smoothing:antialiased;
+      text-rendering:optimizeLegibility;
+      --lmsx-font-ui:'Segoe UI Variable','Segoe UI',system-ui,-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
+      --lmsx-font-mono:'JetBrains Mono','Cascadia Code','Consolas','Segoe UI',monospace;
+    }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     button,input,select{font:inherit}
 
@@ -1736,7 +1860,7 @@
       width:300px;background:#0D0D10;
       border-radius:14px;border:.5px solid rgba(255,255,255,.07);
       overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden;
-      font-family:'JetBrains Mono',monospace;transition:border-radius .3s
+      font-family:var(--lmsx-font-ui);transition:border-radius .3s
     }
     .face.back{position:absolute;top:0;left:0;transform:rotateY(180deg)}
 
@@ -1756,7 +1880,7 @@
     .dot.y:hover::after{content:'−';font-size:9px;color:rgba(0,0,0,.6);opacity:1}
     .dot.g:hover::after{content:'▶';font-size:6px;color:rgba(0,0,0,.6);opacity:1}
 
-    .ptitle{flex:1;text-align:center;font-size:11.5px;font-weight:500;color:rgba(255,255,255,.34);letter-spacing:.09em}
+    .ptitle{flex:1;text-align:center;font-size:11.5px;font-weight:500;color:rgba(255,255,255,.34);letter-spacing:.09em;font-family:var(--lmsx-font-mono)}
     .gear-btn{background:none;border:none;cursor:pointer;padding:8px;margin:-6px;display:flex;align-items:center;color:rgba(255,255,255,.28);transition:color .15s}
     .gear-btn:hover{color:rgba(255,255,255,.65)}
 
@@ -1764,7 +1888,7 @@
     .collapsible.collapsed{max-height:0!important;opacity:0;pointer-events:none}
 
     .log-wrap{padding:11px 13px;min-height:105px;display:flex;flex-direction:column;max-height:200px;overflow:hidden}
-    .log-line{display:flex;align-items:baseline;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.85;opacity:0;transform:translateY(3px);transition:opacity .2s,transform .2s}
+    .log-line{display:flex;align-items:baseline;gap:6px;font-family:var(--lmsx-font-mono);font-size:11px;line-height:1.85;opacity:0;transform:translateY(3px);transition:opacity .2s,transform .2s}
     .log-line.vis{opacity:1;transform:none}
     .log-line.dim{opacity:.18}
     .lt{flex-shrink:0;width:13px;text-align:center;font-size:11px}
@@ -1799,27 +1923,26 @@
     .api-block{margin-bottom:10px}
     .api-provider{display:flex;align-items:center;gap:6px;margin-bottom:5px}
     .pdot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
-    .pdot.or{background:#7C5CFC}
     .pdot.gr{background:#F55036}
     .pname{font-size:11px;color:rgba(255,255,255,.56);font-weight:500;letter-spacing:.04em}
     .api-row{display:flex;gap:6px;align-items:center}
-    .api-input{flex:1;background:#0a0a0d;border:.5px solid rgba(255,255,255,.08);border-radius:6px;padding:7px 9px;color:rgba(255,255,255,.72);font-size:11px;font-family:'JetBrains Mono',monospace;outline:none;transition:border-color .15s;min-width:0}
+    .api-input{flex:1;background:#0a0a0d;border:.5px solid rgba(255,255,255,.08);border-radius:6px;padding:7px 9px;color:rgba(255,255,255,.72);font-size:11px;font-family:var(--lmsx-font-mono);outline:none;transition:border-color .15s;min-width:0}
     .api-input:focus{border-color:rgba(255,255,255,.22)}
     .api-input::placeholder{color:rgba(255,255,255,.12)}
     .eye-btn{background:#0a0a0d;border:.5px solid rgba(255,255,255,.08);border-radius:6px;cursor:pointer;padding:6px 8px;color:rgba(255,255,255,.22);transition:all .15s;flex-shrink:0;display:flex;align-items:center}
     .eye-btn:hover{border-color:rgba(255,255,255,.18);color:rgba(255,255,255,.55)}
     .divline{height:.5px;background:rgba(255,255,255,.04);margin:10px 0}
-    .save-btn{width:100%;background:#172e1a;border:.5px solid rgba(40,200,64,.2);border-radius:7px;padding:8px;color:rgba(40,200,64,.75);font-size:11.5px;font-family:'JetBrains Mono',monospace;font-weight:500;cursor:pointer;transition:all .15s;letter-spacing:.04em}
+    .save-btn{width:100%;background:#172e1a;border:.5px solid rgba(40,200,64,.2);border-radius:7px;padding:8px;color:rgba(40,200,64,.75);font-size:11.5px;font-family:var(--lmsx-font-mono);font-weight:500;cursor:pointer;transition:all .15s;letter-spacing:.04em}
     .save-btn:hover{background:#1d3820;border-color:rgba(40,200,64,.4);color:#28C840}
     .saved-hint{text-align:center;font-size:10.5px;color:rgba(40,200,64,.72);margin-top:7px;opacity:0;transition:opacity .25s;height:16px}
     .back-footer{display:flex;align-items:center;justify-content:space-between;margin-top:11px;padding-top:10px;border-top:.5px solid rgba(255,255,255,.04)}
-    .back-btn{background:none;border:none;cursor:pointer;font-size:11px;color:rgba(255,255,255,.44);font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:4px;padding:0;transition:color .15s}
+    .back-btn{background:none;border:none;cursor:pointer;font-size:11px;color:rgba(255,255,255,.44);font-family:var(--lmsx-font-mono);display:flex;align-items:center;gap:4px;padding:0;transition:color .15s}
     .back-btn:hover{color:rgba(255,255,255,.5)}
     .key-links{display:flex;gap:10px;align-items:center}
     .klink{font-size:10.5px;color:rgba(255,255,255,.44);text-decoration:none;display:flex;align-items:center;gap:3px;transition:color .15s}
     .klink:hover{color:rgba(255,255,255,.45)}
 
-    .mini-dock{display:none;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;background:#0D0D10;border:.5px solid rgba(255,255,255,.08);color:rgba(255,255,255,.78);font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;box-shadow:0 8px 18px rgba(0,0,0,.35);transition:transform .15s,box-shadow .15s,color .15s,border-color .15s}
+    .mini-dock{display:none;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;background:#0D0D10;border:.5px solid rgba(255,255,255,.08);color:rgba(255,255,255,.78);font-family:var(--lmsx-font-mono);font-size:11px;cursor:pointer;box-shadow:0 8px 18px rgba(0,0,0,.35);transition:transform .15s,box-shadow .15s,color .15s,border-color .15s}
     .mini-dock:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.9)}
     .mini-dock:active{transform:translateY(0)}
     .mini-dot{width:6px;height:6px;border-radius:50%;background:#FF5F57;box-shadow:0 0 6px rgba(255,95,87,.6)}
@@ -1833,7 +1956,6 @@
     `;
 
 
-
     // -- ui/html.js --
     const HTML = `
     <div class="scene" id="P">
@@ -1845,7 +1967,7 @@
               <div class="dot y" id="dotY" title="Thu gọn"></div>
               <div class="dot g glow" id="dotG" title="Chạy"></div>
             </div>
-            <div class="ptitle">LMSX</div>
+            <div class="ptitle">LMSx</div>
             <button class="gear-btn" id="flipBtn" title="Cài đặt">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="3"></circle>
@@ -1892,22 +2014,6 @@
 
             <div class="api-block">
               <div class="api-provider">
-                <div class="pdot or"></div>
-                <span class="pname">OpenRouter</span>
-              </div>
-              <div class="api-row">
-                <input class="api-input" id="orInput" type="password" placeholder="sk-or-v1-..." spellcheck="false" autocomplete="off"/>
-                <button class="eye-btn" data-t="orInput" title="Hiện/Ẩn key">
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                    <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" stroke="currentColor" stroke-width="1.2"/>
-                    <circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <div class="api-block">
-              <div class="api-provider">
                 <div class="pdot gr"></div>
                 <span class="pname">Groq</span>
               </div>
@@ -1934,10 +2040,6 @@
                 Quay lại
               </button>
               <div class="key-links">
-                <a class="klink" href="https://openrouter.ai/keys" target="_blank">
-                  <div class="pdot or"></div>OR key
-                  <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M2 8L8 2M8 2H4M8 2v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-                </a>
                 <a class="klink" href="https://console.groq.com/keys" target="_blank">
                   <div class="pdot gr"></div>Groq key
                   <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M2 8L8 2M8 2H4M8 2v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
@@ -1947,9 +2049,9 @@
           </div>
         </div>
       </div>
-      <button class="mini-dock" id="miniDock" title="Mở lại LMSX">
+      <button class="mini-dock" id="miniDock" title="Mở lại LMSx">
         <span class="mini-dot"></span>
-        <span class="mini-label">LMSX</span>
+        <span class="mini-label">LMSx</span>
       </button>
     </div>
     `;
@@ -1993,7 +2095,6 @@
             liveDot: $('liveDot'),
             slabel: $('slabel'),
             toggle: $('tog'),
-            orInput: $('orInput'),
             grInput: $('grInput'),
             saveBtn: $('saveBtn'),
             savedHint: $('savedHint'),
@@ -2260,58 +2361,38 @@
         }
 
         async function loadKeys() {
-            const result = await chromeSyncGet(['lmsx_or_key', 'lmsx_gr_key', 'lmsx_model']);
-            const nextOr = sanitizeAiKeyInput(result.lmsx_or_key || S.settings.ai.keys.openrouter || '');
+            const result = await chromeSyncGet(['lmsx_gr_key', 'lmsx_model']);
             const nextGr = sanitizeAiKeyInput(result.lmsx_gr_key || S.settings.ai.keys.groq || '');
-            const nextModel = normalizeProvider(result.lmsx_model || S.settings.ai.provider || 'groq');
-            const preferred = nextModel === 'openrouter' || nextModel === 'groq' ? nextModel : S.settings.ai.provider;
-
-            if (ids.orInput) ids.orInput.value = nextOr;
             if (ids.grInput) ids.grInput.value = nextGr;
 
-            const changed = nextOr !== S.settings.ai.keys.openrouter || nextGr !== S.settings.ai.keys.groq || preferred !== S.settings.ai.provider;
-            S.settings.ai.keys.openrouter = nextOr;
+            const changed = nextGr !== S.settings.ai.keys.groq || S.settings.ai.provider !== 'groq';
             S.settings.ai.keys.groq = nextGr;
-            S.settings.ai.provider = preferred;
-            S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys[S.settings.ai.provider] || '');
+            S.settings.ai.provider = 'groq';
+            S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys.groq || '');
             if (changed) await S.storage.saveSettings(S.settings);
         }
 
         function resolveProviderForRun() {
-            const current = normalizeProvider(S.settings.ai.provider);
-            const hasCurrent = !!sanitizeAiKeyInput(S.settings.ai.keys[current] || '');
-            if (hasCurrent) return current;
-            const hasGroq = !!sanitizeAiKeyInput(S.settings.ai.keys.groq || '');
-            const hasOr = !!sanitizeAiKeyInput(S.settings.ai.keys.openrouter || '');
-            if (hasGroq) return 'groq';
-            if (hasOr) return 'openrouter';
-            return current;
+            return 'groq';
         }
 
         async function saveKeys() {
-            const orVal = sanitizeAiKeyInput(ids.orInput?.value || '');
             const grVal = sanitizeAiKeyInput(ids.grInput?.value || '');
 
-            if (orVal && !isLikelyApiKey('openrouter', orVal)) {
-                showSavedHint('✕ OR key sai định dạng');
-                return;
-            }
             if (grVal && !isLikelyApiKey('groq', grVal)) {
                 showSavedHint('✕ Groq key sai định dạng');
                 return;
             }
 
-            S.settings.ai.keys.openrouter = orVal;
             S.settings.ai.keys.groq = grVal;
-            S.settings.ai.provider = resolveProviderForRun();
-            S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys[S.settings.ai.provider] || '');
+            S.settings.ai.provider = 'groq';
+            S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys.groq || '');
             delete S.runtime._aiBlocked;
             await S.storage.saveSettings(S.settings);
 
             await chromeSyncSet({
-                lmsx_or_key: orVal,
                 lmsx_gr_key: grVal,
-                lmsx_model: S.settings.ai.provider,
+                lmsx_model: 'groq',
             });
             showSavedHint('✓ Đã lưu');
         }
@@ -2333,9 +2414,19 @@
                 return;
             }
 
-            S.settings.ai.provider = resolveProviderForRun();
-            S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys[S.settings.ai.provider] || '');
+            S.settings.ai.provider = 'groq';
+            S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys.groq || '');
             await S.storage.saveSettings(S.settings);
+
+            const caps = detectPageCapabilities(true);
+            if (caps?.quiz?.matched && !hasConfiguredAiKey()) {
+                const detail = getMissingAiKeyMessage();
+                stopAutomation('missing-ai-key');
+                S.ui?.toast?.(detail, 'error', 4500);
+                setState('waiting-user', { capability: 'quiz', detail });
+                return;
+            }
+
             startAutomation('panel:dotG');
         }
 
@@ -2691,6 +2782,15 @@
         };
     }
 
+    function handleMissingAiKeyForQuiz() {
+        const detail = getMissingAiKeyMessage();
+        S.logger?.warn('quiz', 'missing-key', detail);
+        S.ui?.toast?.(detail, 'error', 4500);
+        stopAutomation('missing-ai-key');
+        setState('waiting-user', { capability: 'quiz', detail });
+        return { ok: false, waitingUser: true, reason: 'missing-ai-key' };
+    }
+
     function importAnswerSetFromText(rawText) {
         const parsed = safeJsonParse(rawText);
         const normalized = normalizeAnswerSet(parsed);
@@ -2730,19 +2830,19 @@
         const importedMap = getImportedAnswerMap();
         const imported = importedMap.get(questionRecord.questionHash) || importedMap.get(questionRecord.legacyHash) || null;
         if (imported) {
-            S.logger?.debug('quiz', 'candidate:found', `Found imported answer for Q${questionRecord.index}`, { hash: questionRecord.questionHash.slice(0, 20) });
+            S.logger?.debug('quiz', 'candidate:found', `Đã tìm thấy đáp án import cho câu ${questionRecord.index + 1}`, { hash: questionRecord.questionHash.slice(0, 20) });
             return imported;
         }
         const cached = S.cache[questionRecord.questionHash] || S.cache[questionRecord.legacyHash] || null;
         if (cached) {
-            S.logger?.debug('quiz', 'candidate:cached', `Found cached answer for Q${questionRecord.index}`, { 
+            S.logger?.debug('quiz', 'candidate:cached', `Đã tìm thấy đáp án cache cho câu ${questionRecord.index + 1}`, { 
                 hash: questionRecord.questionHash.slice(0, 20),
                 hasVerified: cached.verifiedCorrect,
                 confidence: cached.confidence,
                 hasSelectedIndex: Number.isInteger(cached.selectedIndex)
             });
         } else {
-            S.logger?.debug('quiz', 'candidate:miss', `No cache for Q${questionRecord.index}`, { 
+            S.logger?.debug('quiz', 'candidate:miss', `Không có cache cho câu ${questionRecord.index + 1}`, { 
                 hash: questionRecord.questionHash.slice(0, 20),
                 legacyHash: questionRecord.legacyHash,
                 cacheKeys: Object.keys(S.cache).slice(0, 5)
@@ -2821,12 +2921,12 @@
         const capabilityNode = caps.quizSubmit?.matched ? caps.quizSubmit.node : null;
         const submitNode = capabilityNode || findQuizSubmitNodeFallback();
         if (!submitNode) {
-            S.logger?.warn('quiz', 'submit:missing', 'Khong tim thay nut nop bai');
+            S.logger?.warn('quiz', 'submit:missing', 'Không tìm thấy nút nộp bài');
             return { submitted: false, reason: 'submit-not-found' };
         }
         submitNode.scrollIntoView({ block: 'center', behavior: 'smooth' });
         await sleep(250);
-        S.logger?.info('quiz', 'submit:click', `Dang bam nut nop: ${normalizeText(submitNode.textContent || submitNode.getAttribute('aria-label') || 'submit')}`);
+        S.logger?.info('quiz', 'submit:click', `Đang bấm nút nộp: ${normalizeText(submitNode.textContent || submitNode.getAttribute('aria-label') || 'submit')}`);
         submitNode.click();
         return { submitted: true, reason: 'clicked-submit' };
     }
@@ -2902,6 +3002,9 @@
         updateStats({ quizzesDetected: S.stats.quizzesDetected + 1 });
 
         const forceBatchAi = true;
+        if (forceBatchAi && !hasConfiguredAiKey()) {
+            return handleMissingAiKeyForQuiz();
+        }
         S.logger?.info('quiz', 'mode', forceBatchAi ? 'AI-first mode: copy -> batch AI -> fill' : 'Cache-first mode');
 
         const missingCandidates = [];
@@ -3045,7 +3148,7 @@
         S.runtime.quiz.awaitingNetwork = true;
         S.runtime.quiz.lastSubmittedAt = nowTs();
         setState('running-quiz', { capability: 'quiz', detail: 'Đã nộp quiz, chờ phản hồi' });
-        S.logger?.info('quiz', 'submit', 'Submitted quiz automatically', { pending: S.runtime.quiz.pendingQuestionHashes.length });
+        S.logger?.info('quiz', 'submit', 'Đã tự động nộp quiz', { pending: S.runtime.quiz.pendingQuestionHashes.length });
         persistRuntimeSoon();
         return { ok: true, applied, submitted: true };
     }
@@ -3166,7 +3269,7 @@
         S.runtime.quiz.attempts += 1;
         S.runtime.quiz.awaitingNetwork = false;
         const maxRetries = S.settings.automation.maxQuizRetries;
-        S.logger?.warn('quiz', 'submit:incorrect', `Attempt ${S.runtime.quiz.attempts}/${maxRetries}`);
+        S.logger?.warn('quiz', 'submit:incorrect', `Lần thử ${S.runtime.quiz.attempts}/${maxRetries}`);
         if (S.runtime.quiz.attempts < maxRetries) {
             setState('running-quiz', { capability: 'quiz', detail: `Quiz sai, thử lại lần ${S.runtime.quiz.attempts + 1}` });
             scheduleRun('quiz-retry', 1400);
@@ -3340,7 +3443,7 @@
     function pickNextLessonCandidate() {
         const candidates = collectLessonCandidates();
         if (!candidates.length) {
-            S.logger?.info('navigator', 'pick:empty', 'No lesson candidates found in sidebar');
+            S.logger?.info('navigator', 'pick:empty', 'Không tìm thấy bài học nào trong sidebar');
             return { candidate: null, candidates, currentIndex: -1 };
         }
         const currentIndex = findCurrentLessonIndex(candidates);
@@ -3356,10 +3459,10 @@
             return { candidate: next, candidates, currentIndex };
         }
         if (currentIndex === candidates.length - 1) {
-            S.logger?.info('navigator', 'pick:last', 'Current is last candidate in list');
+            S.logger?.info('navigator', 'pick:last', 'Bài hiện tại là bài cuối trong danh sách');
             return { candidate: null, candidates, currentIndex };
         }
-        S.logger?.warn('navigator', 'pick:unknown-current', 'Khong xac dinh duoc bai hien tai, bo qua sidebar navigation');
+        S.logger?.warn('navigator', 'pick:unknown-current', 'Không xác định được bài hiện tại, bỏ qua điều hướng bằng sidebar');
         return { candidate: null, candidates, currentIndex };
     }
 
@@ -3499,7 +3602,7 @@
                 }
             }
 
-            setState('detecting-page', { capability: 'idle', detail: `Scan từ ${reason}` });
+            setState('detecting-page', { capability: 'idle', detail: `Đang quét từ ${reason}` });
             const caps = detectPageCapabilities(true);
             S.runtime.capabilities = serializeCapabilities(caps);
             S.runtime.currentCapability = caps.currentCapability;
@@ -3563,7 +3666,7 @@
                 const lastNav = S.runtime._lastAutoNavigate || 0;
                 if (nowTs() - lastNav >= 3000) {
                     S.runtime._lastAutoNavigate = nowTs();
-                    S.logger?.info('navigator', 'idle-navigate', `No actionable content on page, attempting navigation (reason: ${reason})`);
+                    S.logger?.info('navigator', 'idle-navigate', `Không có nội dung cần xử lý, thử chuyển bài (lý do: ${reason})`);
                     const navigated = await navigateNext('idle-auto');
                     if (navigated) return;
                     // navigateNext already set 'completed' state if nothing found
@@ -3685,7 +3788,7 @@
         window.__lmsxInitialized = true;
 
         S.logger = createLogger();
-        S.logger.info('init', 'boot', `LMSX ${LMSX_VERSION} starting`);
+        S.logger.info('init', 'boot', `LMSx ${LMSX_VERSION} starting`);
 
         try {
             S.storage = createStorageAdapter();
@@ -3695,6 +3798,10 @@
             S.stats = store.stats;
             S.uiPrefs = store.uiPrefs;
             S.cache = store.cache;
+            if (S.settings.featureFlags.verboseLogs === true) {
+                S.settings.featureFlags.verboseLogs = false;
+                await S.storage.saveSettings(S.settings);
+            }
             S.runtime.mode = S.settings.featureFlags.compatBypass ? 'compat' : 'safe';
             S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys[S.settings.ai.provider] || '');
 
@@ -3708,7 +3815,7 @@
             S.ui?.sync?.();
             S.logger.info('init', 'ready', 'Panel ready and idle by default');
         } catch (error) {
-            console.error('[LMSX] init failed', error);
+            console.error('[LMSx] init failed', error);
             if (S.runtime) {
                 S.runtime.lastError = { message: error.message, at: nowIso() };
                 setState('error', { capability: 'error', detail: error.message });

@@ -35,7 +35,6 @@ function initPanel(root) {
         liveDot: $('liveDot'),
         slabel: $('slabel'),
         toggle: $('tog'),
-        orInput: $('orInput'),
         grInput: $('grInput'),
         saveBtn: $('saveBtn'),
         savedHint: $('savedHint'),
@@ -302,58 +301,38 @@ function initPanel(root) {
     }
 
     async function loadKeys() {
-        const result = await chromeSyncGet(['lmsx_or_key', 'lmsx_gr_key', 'lmsx_model']);
-        const nextOr = sanitizeAiKeyInput(result.lmsx_or_key || S.settings.ai.keys.openrouter || '');
+        const result = await chromeSyncGet(['lmsx_gr_key', 'lmsx_model']);
         const nextGr = sanitizeAiKeyInput(result.lmsx_gr_key || S.settings.ai.keys.groq || '');
-        const nextModel = normalizeProvider(result.lmsx_model || S.settings.ai.provider || 'groq');
-        const preferred = nextModel === 'openrouter' || nextModel === 'groq' ? nextModel : S.settings.ai.provider;
-
-        if (ids.orInput) ids.orInput.value = nextOr;
         if (ids.grInput) ids.grInput.value = nextGr;
 
-        const changed = nextOr !== S.settings.ai.keys.openrouter || nextGr !== S.settings.ai.keys.groq || preferred !== S.settings.ai.provider;
-        S.settings.ai.keys.openrouter = nextOr;
+        const changed = nextGr !== S.settings.ai.keys.groq || S.settings.ai.provider !== 'groq';
         S.settings.ai.keys.groq = nextGr;
-        S.settings.ai.provider = preferred;
-        S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys[S.settings.ai.provider] || '');
+        S.settings.ai.provider = 'groq';
+        S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys.groq || '');
         if (changed) await S.storage.saveSettings(S.settings);
     }
 
     function resolveProviderForRun() {
-        const current = normalizeProvider(S.settings.ai.provider);
-        const hasCurrent = !!sanitizeAiKeyInput(S.settings.ai.keys[current] || '');
-        if (hasCurrent) return current;
-        const hasGroq = !!sanitizeAiKeyInput(S.settings.ai.keys.groq || '');
-        const hasOr = !!sanitizeAiKeyInput(S.settings.ai.keys.openrouter || '');
-        if (hasGroq) return 'groq';
-        if (hasOr) return 'openrouter';
-        return current;
+        return 'groq';
     }
 
     async function saveKeys() {
-        const orVal = sanitizeAiKeyInput(ids.orInput?.value || '');
         const grVal = sanitizeAiKeyInput(ids.grInput?.value || '');
 
-        if (orVal && !isLikelyApiKey('openrouter', orVal)) {
-            showSavedHint('✕ OR key sai định dạng');
-            return;
-        }
         if (grVal && !isLikelyApiKey('groq', grVal)) {
             showSavedHint('✕ Groq key sai định dạng');
             return;
         }
 
-        S.settings.ai.keys.openrouter = orVal;
         S.settings.ai.keys.groq = grVal;
-        S.settings.ai.provider = resolveProviderForRun();
-        S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys[S.settings.ai.provider] || '');
+        S.settings.ai.provider = 'groq';
+        S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys.groq || '');
         delete S.runtime._aiBlocked;
         await S.storage.saveSettings(S.settings);
 
         await chromeSyncSet({
-            lmsx_or_key: orVal,
             lmsx_gr_key: grVal,
-            lmsx_model: S.settings.ai.provider,
+            lmsx_model: 'groq',
         });
         showSavedHint('✓ Đã lưu');
     }
@@ -375,9 +354,19 @@ function initPanel(root) {
             return;
         }
 
-        S.settings.ai.provider = resolveProviderForRun();
-        S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys[S.settings.ai.provider] || '');
+        S.settings.ai.provider = 'groq';
+        S.runtime._draftAiKey = sanitizeAiKeyInput(S.settings.ai.keys.groq || '');
         await S.storage.saveSettings(S.settings);
+
+        const caps = detectPageCapabilities(true);
+        if (caps?.quiz?.matched && !hasConfiguredAiKey()) {
+            const detail = getMissingAiKeyMessage();
+            stopAutomation('missing-ai-key');
+            S.ui?.toast?.(detail, 'error', 4500);
+            setState('waiting-user', { capability: 'quiz', detail });
+            return;
+        }
+
         startAutomation('panel:dotG');
     }
 

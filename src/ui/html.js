@@ -8,7 +8,7 @@ const HTML = `
           <div class="dot y" id="dotY" title="Thu gọn"></div>
           <div class="dot g glow" id="dotG" title="Chạy"></div>
         </div>
-        <div class="ptitle">LMSX</div>
+        <div class="ptitle">LMSx</div>
         <button class="gear-btn" id="flipBtn" title="Cài đặt">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"></circle>
@@ -55,22 +55,6 @@ const HTML = `
 
         <div class="api-block">
           <div class="api-provider">
-            <div class="pdot or"></div>
-            <span class="pname">OpenRouter</span>
-          </div>
-          <div class="api-row">
-            <input class="api-input" id="orInput" type="password" placeholder="sk-or-v1-..." spellcheck="false" autocomplete="off"/>
-            <button class="eye-btn" data-t="orInput" title="Hiện/Ẩn key">
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" stroke="currentColor" stroke-width="1.2"/>
-                <circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="api-block">
-          <div class="api-provider">
             <div class="pdot gr"></div>
             <span class="pname">Groq</span>
           </div>
@@ -97,10 +81,6 @@ const HTML = `
             Quay lại
           </button>
           <div class="key-links">
-            <a class="klink" href="https://openrouter.ai/keys" target="_blank">
-              <div class="pdot or"></div>OR key
-              <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M2 8L8 2M8 2H4M8 2v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-            </a>
             <a class="klink" href="https://console.groq.com/keys" target="_blank">
               <div class="pdot gr"></div>Groq key
               <svg width="8" height="8" viewBox="0 0 10 10" fill="none"><path d="M2 8L8 2M8 2H4M8 2v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
@@ -110,9 +90,9 @@ const HTML = `
       </div>
     </div>
   </div>
-  <button class="mini-dock" id="miniDock" title="Mở lại LMSX">
+  <button class="mini-dock" id="miniDock" title="Mở lại LMSx">
     <span class="mini-dot"></span>
-    <span class="mini-label">LMSX</span>
+    <span class="mini-label">LMSx</span>
   </button>
 </div>
 `;

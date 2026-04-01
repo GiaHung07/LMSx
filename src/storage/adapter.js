@@ -3,7 +3,7 @@ function chromeStorageGet(keys) {
         try {
             chrome.storage.local.get(keys, result => {
                 if (chrome.runtime.lastError) {
-                    console.warn('[LMSX] storage get error:', chrome.runtime.lastError.message);
+                    console.warn('[LMSx] storage get error:', chrome.runtime.lastError.message);
                     resolve({});
                     return;
                 }
@@ -20,7 +20,7 @@ function chromeStorageSet(payload) {
         try {
             chrome.storage.local.set(payload, () => {
                 if (chrome.runtime.lastError) {
-                    console.warn('[LMSX] storage set error:', chrome.runtime.lastError.message);
+                    console.warn('[LMSx] storage set error:', chrome.runtime.lastError.message);
                 }
                 resolve();
             });
@@ -61,6 +61,10 @@ function createStorageAdapter() {
                 }
             });
 
+            localStorage.removeItem('lms_openrouter_key');
+            localStorage.removeItem('lms_gemini_key');
+            localStorage.removeItem('lms_custom_key');
+
             for (let i = 0; i < localStorage.length; i++) {
                 const legacyKey = localStorage.key(i);
                 if (!legacyKey || !legacyKey.startsWith('lms_q_')) continue;
@@ -99,7 +103,10 @@ function createStorageAdapter() {
         const migrated = migrateLegacyLocalStorage(store);
         store.runtime.active = false;
         store.runtime.state = 'idle';
+        store.runtime.lastError = null;
         store.runtime.lastUrl = location.href;
+        store.runtime.lastAction = 'Đang chờ';
+        store.runtime.logs = [];
         store.runtime.runner = normalizeRunner(store.runtime.runner);
 
         if (migrated || !raw[STORAGE_KEYS.settings] || !raw[STORAGE_KEYS.runtime] || !raw[STORAGE_KEYS.stats] || !raw[STORAGE_KEYS.uiPrefs]) {

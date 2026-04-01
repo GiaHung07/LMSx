@@ -3,7 +3,7 @@ function createLogger() {
 
     function push(level, module, event, detail = '', payload) {
         const verboseLogs = S.settings?.featureFlags?.verboseLogs === true;
-        const allowLevel = level === 'warn' || level === 'error' || verboseLogs;
+        const allowLevel = verboseLogs;
         if (!allowLevel) return null;
 
         const entry = {
@@ -22,8 +22,8 @@ function createLogger() {
             S.runtime.logs = S.runtime.logs.slice(-maxEntries);
         }
 
-        if (verboseLogs || level === 'error') {
-            const prefix = `[LMSX][${module}] ${event}`;
+        if (verboseLogs) {
+            const prefix = `[LMSx][${module}] ${event}`;
             const message = entry.detail ? `${prefix} ${entry.detail}` : prefix;
             const sink = level === 'error' ? console.error : level === 'warn' ? console.warn : level === 'debug' ? console.debug : console.log;
             if (payload !== undefined) sink(message, payload);

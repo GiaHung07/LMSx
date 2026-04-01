@@ -1,5 +1,5 @@
 chrome.runtime.onInstalled.addListener(() => {
-    console.log('[LMSX][background] installed');
+    console.log('[LMSx][background] installed');
 });
 
 const CryptoUtils = {
@@ -124,7 +124,7 @@ async function handleMessage(request) {
 
 chrome.runtime.onSuspend.addListener(() => {
     sessionVault.clear();
-    console.log('[LMSX][background] session vault cleared on suspend');
+    console.log('[LMSx][background] session vault cleared on suspend');
 });
 
 chrome.webRequest?.onBeforeSendHeaders?.addListener(
@@ -136,4 +136,4 @@ chrome.webRequest?.onBeforeSendHeaders?.addListener(
     ['requestHeaders']
 );
 
-console.log('[LMSX][background] ready');
+console.log('[LMSx][background] ready');

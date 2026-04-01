@@ -8,7 +8,7 @@ const STORAGE_KEYS = {
     cache: 'lmsx_cache',
 };
 
-const AI_PROVIDERS = ['groq', 'openrouter', 'gemini', 'custom'];
+const AI_PROVIDERS = ['groq'];
 const STATE_VALUES = ['idle', 'detecting-page', 'ready', 'running-video', 'waiting-ai', 'running-quiz', 'waiting-user', 'paused', 'error', 'completed'];
 const RUNNER_MAX_RETRIES = 3;
 
@@ -19,12 +19,7 @@ function createDefaultSettings() {
             provider: 'groq',
             keys: {
                 groq: '',
-                openrouter: '',
-                gemini: '',
-                custom: '',
             },
-            customBaseUrl: 'https://api.openai.com/v1',
-            customModel: 'gpt-4o-mini',
         },
         automation: {
             videoSpeed: 4,
@@ -124,7 +119,7 @@ function shallowClone(value) {
 }
 
 function normalizeProvider(value) {
-    return AI_PROVIDERS.includes(value) ? value : 'gemini';
+    return AI_PROVIDERS.includes(value) ? value : 'groq';
 }
 
 function normalizeSettings(input) {
@@ -137,12 +132,7 @@ function normalizeSettings(input) {
             provider: normalizeProvider(value.ai?.provider),
             keys: {
                 groq: typeof keys.groq === 'string' ? keys.groq : defaults.ai.keys.groq,
-                openrouter: typeof keys.openrouter === 'string' ? keys.openrouter : defaults.ai.keys.openrouter,
-                gemini: typeof keys.gemini === 'string' ? keys.gemini : defaults.ai.keys.gemini,
-                custom: typeof keys.custom === 'string' ? keys.custom : defaults.ai.keys.custom,
             },
-            customBaseUrl: typeof value.ai?.customBaseUrl === 'string' ? value.ai.customBaseUrl : defaults.ai.customBaseUrl,
-            customModel: typeof value.ai?.customModel === 'string' ? value.ai.customModel : defaults.ai.customModel,
         },
         automation: {
             videoSpeed: clamp(Number(value.automation?.videoSpeed) || defaults.automation.videoSpeed, 1, 16),
@@ -306,6 +296,5 @@ function normalizeAnswerSet(input) {
         importedAt: Number(input.importedAt) || nowTs(),
     };
 }
-
 
 
