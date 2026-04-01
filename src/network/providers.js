@@ -1,8 +1,11 @@
 function extractAiKeyCandidate(rawValue = '') {
     const text = String(rawValue || '').trim();
     if (!text) return '';
-    const match = text.match(/AIzaSy[0-9A-Za-z_-]{33}/);
-    return match ? match[0] : text.replace(/\s+/g, '');
+    const groqMatch = text.match(/gsk_[A-Za-z0-9_-]{20,}/);
+    if (groqMatch) return groqMatch[0];
+    const geminiMatch = text.match(/AIzaSy[0-9A-Za-z_-]{33}/);
+    if (geminiMatch) return geminiMatch[0];
+    return text.replace(/\s+/g, '');
 }
 
 function pickBestAnswerCandidate(candidates) {

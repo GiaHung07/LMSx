@@ -270,13 +270,16 @@ function initPanel(root) {
         renderLogList();
     }
 
-    function showSavedHint(message = '✓ Đã lưu') {
+    function showSavedHint(message = '✓ Đã lưu', options = {}) {
         if (!ids.savedHint) return;
+        const autoClose = options.autoClose !== false;
         ids.savedHint.textContent = message;
         ids.savedHint.style.opacity = '1';
         setManagedTimeout(() => {
             ids.savedHint.style.opacity = '0';
-            setManagedTimeout(() => ids.card?.classList.remove('flipped'), 320);
+            if (autoClose) {
+                setManagedTimeout(() => ids.card?.classList.remove('flipped'), 320);
+            }
         }, 1100);
     }
 
@@ -320,7 +323,7 @@ function initPanel(root) {
         const grVal = sanitizeAiKeyInput(ids.grInput?.value || '');
 
         if (grVal && !isLikelyApiKey('groq', grVal)) {
-            showSavedHint('✕ Groq key sai định dạng');
+            showSavedHint('✕ Groq key sai định dạng', { autoClose: false });
             return;
         }
 

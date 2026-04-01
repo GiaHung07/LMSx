@@ -1,7 +1,7 @@
 // content.js - LMSX build
 (function () {
     'use strict';
-    const __LMSX_BUILD_STAMP__ = "2026-04-01T15:49:15.242Z";
+    const __LMSX_BUILD_STAMP__ = "2026-04-01T16:27:13.968Z";
 
     // -- main.js --
     const LMSX_VERSION = '3.6';
@@ -1046,8 +1046,11 @@
     function extractAiKeyCandidate(rawValue = '') {
         const text = String(rawValue || '').trim();
         if (!text) return '';
-        const match = text.match(/AIzaSy[0-9A-Za-z_-]{33}/);
-        return match ? match[0] : text.replace(/\s+/g, '');
+        const groqMatch = text.match(/gsk_[A-Za-z0-9_-]{20,}/);
+        if (groqMatch) return groqMatch[0];
+        const geminiMatch = text.match(/AIzaSy[0-9A-Za-z_-]{33}/);
+        if (geminiMatch) return geminiMatch[0];
+        return text.replace(/\s+/g, '');
     }
 
     function pickBestAnswerCandidate(candidates) {
@@ -2330,13 +2333,16 @@
             renderLogList();
         }
 
-        function showSavedHint(message = '✓ Đã lưu') {
+        function showSavedHint(message = '✓ Đã lưu', options = {}) {
             if (!ids.savedHint) return;
+            const autoClose = options.autoClose !== false;
             ids.savedHint.textContent = message;
             ids.savedHint.style.opacity = '1';
             setManagedTimeout(() => {
                 ids.savedHint.style.opacity = '0';
-                setManagedTimeout(() => ids.card?.classList.remove('flipped'), 320);
+                if (autoClose) {
+                    setManagedTimeout(() => ids.card?.classList.remove('flipped'), 320);
+                }
             }, 1100);
         }
 
@@ -2380,7 +2386,7 @@
             const grVal = sanitizeAiKeyInput(ids.grInput?.value || '');
 
             if (grVal && !isLikelyApiKey('groq', grVal)) {
-                showSavedHint('✕ Groq key sai định dạng');
+                showSavedHint('✕ Groq key sai định dạng', { autoClose: false });
                 return;
             }
 
@@ -2544,19 +2550,42 @@
                 return true;
             }
 
+            const originalMuted = video.muted;
+            const originalVolume = video.volume;
             try {
                 await video.play();
             } catch (error) {
                 S.logger?.warn('video', 'play:blocked', error?.message || 'video.play blocked');
-                return false;
+                try {
+                    video.muted = true;
+                    video.volume = 0;
+                    await sleep(180);
+                    await video.play();
+                    S.logger?.info('video', 'play:fallback-muted', 'Autoplay required temporary mute fallback');
+                } catch (fallbackError) {
+                    video.muted = originalMuted;
+                    video.volume = originalVolume;
+                    S.logger?.warn('video', 'play:failed', fallbackError?.message || 'video.play failed after mute fallback');
+                    return false;
+                }
             }
 
-            // Wait 2s for player to initialize, then force x4
-            await sleep(2000);
-            
+            // Give the player a short moment to initialize before locking speed
+            await sleep(600);
+
             // Force speed
             video.playbackRate = speed;
             this.forceCustomPlayerSpeed(speed);
+
+            if (!originalMuted && originalVolume > 0) {
+                setManagedTimeout(() => {
+                    if (!this.video || this.video !== video) return;
+                    try {
+                        video.muted = originalMuted;
+                        video.volume = originalVolume;
+                    } catch {}
+                }, 900);
+            }
 
             this.timer = setInterval(() => this.tick(speed), 400);
             S.timers.add(this.timer);
@@ -2772,7 +2801,7 @@
             source: 'lmsx-export',
             exportedAt: nowTs(),
             url: location.href,
-            provider: S.settings?.ai?.provider || 'gemini',
+            provider: S.settings?.ai?.provider || 'groq',
             questions: questions.map(question => ({
                 questionHash: question.questionHash,
                 legacyHash: question.legacyHash,
@@ -3333,6 +3362,15 @@
         persistRuntimeSoon();
     }
 
+    function markNavigationSettling(reason = 'navigation', durationMs = 8000) {
+        S.runtime._navigationSettlingUntil = nowTs() + durationMs;
+        S.runtime._navigationSettlingReason = reason;
+    }
+
+    function isNavigationSettling() {
+        return Number(S.runtime._navigationSettlingUntil || 0) > nowTs();
+    }
+
     function isLikelyDisabledLesson(node) {
         if (!(node instanceof HTMLElement)) return true;
         const classText = `${node.className || ''} ${node.getAttribute('data-state') || ''}`.toLowerCase();
@@ -3506,6 +3544,7 @@
             lessonCandidate.clickable.scrollIntoView({ block: 'center', behavior: 'smooth' });
             await sleep(240 + Math.floor(Math.random() * 120));
             lessonCandidate.clickable.click();
+            markNavigationSettling('lesson-click');
             updateStats({ navigations: S.stats.navigations + 1 });
             invalidateCapabilityCache('navigate-lesson-list');
             scheduleRun(`${reason}:after-lesson-click`, 1400);
@@ -3521,6 +3560,7 @@
         caps.nextButton.node.scrollIntoView({ block: 'center', behavior: 'smooth' });
         await sleep(240 + Math.floor(Math.random() * 120));
         caps.nextButton.node.click();
+        markNavigationSettling('next-button');
         updateStats({ navigations: S.stats.navigations + 1 });
         invalidateCapabilityCache('navigate-next');
         scheduleRun(`${reason}:after-click`, 1400);
@@ -3610,6 +3650,11 @@
             updateProgress();
             persistRuntimeSoon();
 
+            if (caps.quizStart?.matched || caps.quiz?.matched || caps.video?.matched) {
+                S.runtime._navigationSettlingUntil = 0;
+                S.runtime._navigationSettlingReason = '';
+            }
+
             const jitter = () => Math.floor(Math.random() * 200) - 100;
             
             // Navigate sau video/quiz phải check TRƯỚC các xử lý chức năng để tránh kẹt trạng thái
@@ -3650,7 +3695,7 @@
                 const vid = caps.video.node;
                 const isFinished = (S.videoCtrl && S.videoCtrl._ended && S.videoCtrl.video === vid) || 
                                    vid.ended || 
-                                   (vid.duration && (vid.currentTime / vid.duration >= 0.98 || vid.duration - vid.currentTime <= 1));
+                                   (vid.duration && (vid.currentTime / vid.duration >= 0.995 || vid.duration - vid.currentTime <= 0.35));
 
                 if (!isFinished) {
                     setState('running-video', { capability: 'video', detail: 'Đang điều khiển video' });
@@ -3663,6 +3708,11 @@
 
             // No video/quiz/quizStart found on this page - try auto-navigate to next lesson
             if (S.settings.automation.autoNextLesson) {
+                if (isNavigationSettling()) {
+                    setState('ready', { capability: caps.currentCapability, detail: 'Đang chờ bài mới tải xong' });
+                    scheduleRun('navigation-settle', 900);
+                    return;
+                }
                 const lastNav = S.runtime._lastAutoNavigate || 0;
                 if (nowTs() - lastNav >= 3000) {
                     S.runtime._lastAutoNavigate = nowTs();
@@ -3713,6 +3763,7 @@
             lastUrl = location.href;
             invalidateCapabilityCache(reason);
             S.runtime.lastUrl = location.href;
+            markNavigationSettling(reason);
             delete S.runtime._aiBlocked;
             S.runtime.lastAction = 'Chuẩn bị...';
             if (S.runtime.active) scheduleRun(reason, 300);

@@ -50,6 +50,15 @@ function scheduleRun(reason, delay = 0) {
     persistRuntimeSoon();
 }
 
+function markNavigationSettling(reason = 'navigation', durationMs = 8000) {
+    S.runtime._navigationSettlingUntil = nowTs() + durationMs;
+    S.runtime._navigationSettlingReason = reason;
+}
+
+function isNavigationSettling() {
+    return Number(S.runtime._navigationSettlingUntil || 0) > nowTs();
+}
+
 function isLikelyDisabledLesson(node) {
     if (!(node instanceof HTMLElement)) return true;
     const classText = `${node.className || ''} ${node.getAttribute('data-state') || ''}`.toLowerCase();
@@ -223,6 +232,7 @@ async function navigateNext(reason = 'next') {
         lessonCandidate.clickable.scrollIntoView({ block: 'center', behavior: 'smooth' });
         await sleep(240 + Math.floor(Math.random() * 120));
         lessonCandidate.clickable.click();
+        markNavigationSettling('lesson-click');
         updateStats({ navigations: S.stats.navigations + 1 });
         invalidateCapabilityCache('navigate-lesson-list');
         scheduleRun(`${reason}:after-lesson-click`, 1400);
@@ -238,6 +248,7 @@ async function navigateNext(reason = 'next') {
     caps.nextButton.node.scrollIntoView({ block: 'center', behavior: 'smooth' });
     await sleep(240 + Math.floor(Math.random() * 120));
     caps.nextButton.node.click();
+    markNavigationSettling('next-button');
     updateStats({ navigations: S.stats.navigations + 1 });
     invalidateCapabilityCache('navigate-next');
     scheduleRun(`${reason}:after-click`, 1400);
@@ -327,6 +338,11 @@ async function runAutomationCycle(reason = 'manual') {
         updateProgress();
         persistRuntimeSoon();
 
+        if (caps.quizStart?.matched || caps.quiz?.matched || caps.video?.matched) {
+            S.runtime._navigationSettlingUntil = 0;
+            S.runtime._navigationSettlingReason = '';
+        }
+
         const jitter = () => Math.floor(Math.random() * 200) - 100;
         
         // Navigate sau video/quiz phải check TRƯỚC các xử lý chức năng để tránh kẹt trạng thái
@@ -367,7 +383,7 @@ async function runAutomationCycle(reason = 'manual') {
             const vid = caps.video.node;
             const isFinished = (S.videoCtrl && S.videoCtrl._ended && S.videoCtrl.video === vid) || 
                                vid.ended || 
-                               (vid.duration && (vid.currentTime / vid.duration >= 0.98 || vid.duration - vid.currentTime <= 1));
+                               (vid.duration && (vid.currentTime / vid.duration >= 0.995 || vid.duration - vid.currentTime <= 0.35));
 
             if (!isFinished) {
                 setState('running-video', { capability: 'video', detail: 'Đang điều khiển video' });
@@ -380,6 +396,11 @@ async function runAutomationCycle(reason = 'manual') {
 
         // No video/quiz/quizStart found on this page - try auto-navigate to next lesson
         if (S.settings.automation.autoNextLesson) {
+            if (isNavigationSettling()) {
+                setState('ready', { capability: caps.currentCapability, detail: 'Đang chờ bài mới tải xong' });
+                scheduleRun('navigation-settle', 900);
+                return;
+            }
             const lastNav = S.runtime._lastAutoNavigate || 0;
             if (nowTs() - lastNav >= 3000) {
                 S.runtime._lastAutoNavigate = nowTs();
@@ -430,6 +451,7 @@ function installNavigationWatcher() {
         lastUrl = location.href;
         invalidateCapabilityCache(reason);
         S.runtime.lastUrl = location.href;
+        markNavigationSettling(reason);
         delete S.runtime._aiBlocked;
         S.runtime.lastAction = 'Chuẩn bị...';
         if (S.runtime.active) scheduleRun(reason, 300);

@@ -28,19 +28,42 @@ class VideoCtrl {
             return true;
         }
 
+        const originalMuted = video.muted;
+        const originalVolume = video.volume;
         try {
             await video.play();
         } catch (error) {
             S.logger?.warn('video', 'play:blocked', error?.message || 'video.play blocked');
-            return false;
+            try {
+                video.muted = true;
+                video.volume = 0;
+                await sleep(180);
+                await video.play();
+                S.logger?.info('video', 'play:fallback-muted', 'Autoplay required temporary mute fallback');
+            } catch (fallbackError) {
+                video.muted = originalMuted;
+                video.volume = originalVolume;
+                S.logger?.warn('video', 'play:failed', fallbackError?.message || 'video.play failed after mute fallback');
+                return false;
+            }
         }
 
-        // Wait 2s for player to initialize, then force x4
-        await sleep(2000);
-        
+        // Give the player a short moment to initialize before locking speed
+        await sleep(600);
+
         // Force speed
         video.playbackRate = speed;
         this.forceCustomPlayerSpeed(speed);
+
+        if (!originalMuted && originalVolume > 0) {
+            setManagedTimeout(() => {
+                if (!this.video || this.video !== video) return;
+                try {
+                    video.muted = originalMuted;
+                    video.volume = originalVolume;
+                } catch {}
+            }, 900);
+        }
 
         this.timer = setInterval(() => this.tick(speed), 400);
         S.timers.add(this.timer);

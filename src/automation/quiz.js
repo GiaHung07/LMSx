@@ -124,7 +124,7 @@ function buildQuizPayload() {
         source: 'lmsx-export',
         exportedAt: nowTs(),
         url: location.href,
-        provider: S.settings?.ai?.provider || 'gemini',
+        provider: S.settings?.ai?.provider || 'groq',
         questions: questions.map(question => ({
             questionHash: question.questionHash,
             legacyHash: question.legacyHash,
