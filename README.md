@@ -190,11 +190,17 @@ Video/Quiz hoàn tất
 - Không phân phối lại dưới hình thức thương mại
 - Tác giả không chịu trách nhiệm nếu LMS ghi nhận hành vi bất thường
 - Dữ liệu nhạy cảm được lưu cục bộ
+---
 
+### Liên hệ
+
+Nếu bạn có bất kỳ thắc mắc hoặc vấn đề nào liên quan đến repo, vui lòng liên hệ:
+
+> Email: [lanmanptit@gmail.com](mailto:lanmanptit@gmail.com)
 ---
 
 <div align="center">
 
-Made with ♥ by **PGH** · PTIT · Manifest V3
+Made with ♥ by **LanMan** · PTIT · Manifest V3
 
 </div>
