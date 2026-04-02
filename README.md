@@ -83,23 +83,6 @@ Trong quá trình dev có thể dùng:
 node build.js --watch
 ```
 
-### Phát hành tự động
-
-Repo đã có GitHub Actions để tự build và upload file ZIP vào **Releases** khi push tag version.
-
-Ví dụ:
-
-```bash
-git tag v3.6.1
-git push origin v3.6.1
-```
-
-Workflow sẽ tự:
-- patch `manifest.json` theo version của tag
-- build `content.js`
-- đóng gói `dist/LMSx-v3.6.1.zip`
-- upload ZIP vào GitHub Release tương ứng
-
 ### Bước 3 — Load vào Chrome
 
 1. Mở `chrome://extensions`
@@ -198,27 +181,6 @@ Video/Quiz hoàn tất
   -> nếu đang ở cuối chapter thì mở chapter kế tiếp
   -> nếu không xác định được thì fallback sang nút Next thật trên trang
 ```
-
----
-
-## Troubleshooting
-
-**Panel không hiện?**  
-Reload extension ở `chrome://extensions`, sau đó F5 lại trang LMS.
-
-**Không gọi được AI?**  
-Kiểm tra Groq key, quota, hoặc timeout từ Groq. Hiện tại không còn fallback sang OpenRouter nữa.
-
-**Lỗi kiểu `signal is aborted without reason`?**  
-Bản mới sẽ đổi lỗi này thành thông báo dễ hiểu hơn như timeout hoặc mất kết nối tới Groq.
-
-**Tự chuyển sai bài?**  
-Logic hiện tại chỉ cố đi bài liền kề. Nếu sidebar của LMS render bất thường thì mới cần debug thêm.
-
-**`content.js` không có sau khi clone?**  
-Chạy `node build.js`.
-
----
 
 ## Lưu ý
 
