@@ -13,7 +13,7 @@
 
 **PTIT LMS Automation · Chrome Extension MV3**
 
-[![Version](https://img.shields.io/badge/version-3.6-22c55e?style=flat-square&logo=semanticrelease&logoColor=white)](https://github.com/Giahung07/LMSx)
+[![Version](https://img.shields.io/badge/version-3.6.2-22c55e?style=flat-square&logo=semanticrelease&logoColor=white)](https://github.com/Giahung07/LMSx)
 [![Chrome](https://img.shields.io/badge/Chrome-MV3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com)
 [![Edge](https://img.shields.io/badge/Edge-Supported-0078D4?style=flat-square&logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com)
 [![Node](https://img.shields.io/badge/Node.js-required-339933?style=flat-square&logo=nodedotjs&logoColor=white)](#bước-2--build)
@@ -31,7 +31,7 @@
 
 ## Tổng quan
 
-LMSx v3.6 là Chrome Extension Manifest V3 được viết theo kiến trúc module hoá. Extension tự động xử lý toàn bộ chu trình học:
+LMSx v3.6.2 là Chrome Extension Manifest V3 được viết theo kiến trúc module hoá. Extension tự động xử lý toàn bộ chu trình học:
 
 ```text
 Video (x4) -> Quiz (AI) -> Chuyển bài -> lặp lại
@@ -82,6 +82,23 @@ Trong quá trình dev có thể dùng:
 ```bash
 node build.js --watch
 ```
+
+### Phát hành tự động
+
+Repo đã có GitHub Actions để tự build và upload file ZIP vào **Releases** khi push tag version.
+
+Ví dụ:
+
+```bash
+git tag v3.6.2
+git push origin v3.6.2
+```
+
+Workflow sẽ tự:
+- patch `manifest.json` theo version của tag
+- build `content.js`
+- đóng gói `dist/LMSx-v3.6.zip`
+- upload ZIP vào GitHub Release tương ứng
 
 ### Bước 3 — Load vào Chrome
 

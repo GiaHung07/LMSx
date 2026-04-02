@@ -1,3 +1,5 @@
+const AI_BATCH_SIZE = 5;
+
 function getQuizRoot() {
     const caps = detectPageCapabilities(true);
     return caps.quiz?.node || null;

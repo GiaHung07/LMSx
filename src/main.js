@@ -1,4 +1,4 @@
-const LMSX_VERSION = '3.6';
+const LMSX_VERSION = '3.6.2';
 
 const S = {
     version: LMSX_VERSION,

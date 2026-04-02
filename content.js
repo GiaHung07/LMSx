@@ -1,10 +1,10 @@
 // content.js - LMSX build
 (function () {
     'use strict';
-    const __LMSX_BUILD_STAMP__ = "2026-04-01T19:44:37.851Z";
+    const __LMSX_BUILD_STAMP__ = "2026-04-02T11:25:18.532Z";
 
     // -- main.js --
-    const LMSX_VERSION = '3.6';
+    const LMSX_VERSION = '3.6.2';
 
     const S = {
         version: LMSX_VERSION,
@@ -2521,6 +2521,8 @@
 
 
     // -- automation/quiz.js --
+    const AI_BATCH_SIZE = 5;
+
     function getQuizRoot() {
         const caps = detectPageCapabilities(true);
         return caps.quiz?.node || null;
