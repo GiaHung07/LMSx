@@ -31,7 +31,7 @@
 
 ## Tổng quan
 
-LMSx v3.6.2 là Chrome Extension Manifest V3 được viết theo kiến trúc module hoá. Extension tự động xử lý toàn bộ chu trình học:
+LMSx v3.6 là Chrome Extension Manifest V3 được viết theo kiến trúc module hoá. Extension tự động xử lý toàn bộ chu trình học:
 
 ```text
 Video (x4) -> Quiz (AI) -> Chuyển bài -> lặp lại
@@ -90,8 +90,8 @@ Repo đã có GitHub Actions để tự build và upload file ZIP vào **Release
 Ví dụ:
 
 ```bash
-git tag v3.6.2
-git push origin v3.6.2
+git tag v3.6
+git push origin v3.6
 ```
 
 Workflow sẽ tự:
