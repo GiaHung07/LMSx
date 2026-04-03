@@ -21,7 +21,7 @@
 
 <br/>
 
-*Auto — Video × Quiz × Chuyển bài — trên `lms.ptit.edu.vn`*
+*Auto — Video × Quiz × Chuyển bài*
 
 <br/>
 
