@@ -40,7 +40,7 @@ button,input,select{font:inherit}
 .dot.y:hover::after{content:'−';font-size:9px;color:rgba(0,0,0,.6);opacity:1}
 .dot.g:hover::after{content:'▶';font-size:6px;color:rgba(0,0,0,.6);opacity:1}
 
-.ptitle{flex:1;text-align:center;font-size:11.5px;font-weight:500;color:rgba(255,255,255,.34);letter-spacing:.09em;font-family:var(--lmsx-font-mono)}
+.panel-title{flex:1;text-align:center;font-size:11.5px;font-weight:500;color:rgba(255,255,255,.34);letter-spacing:.09em;font-family:var(--lmsx-font-mono)}
 .gear-btn{background:none;border:none;cursor:pointer;padding:8px;margin:-6px;display:flex;align-items:center;color:rgba(255,255,255,.28);transition:color .15s}
 .gear-btn:hover{color:rgba(255,255,255,.65)}
 

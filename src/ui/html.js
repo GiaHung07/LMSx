@@ -8,7 +8,7 @@ const HTML = `
           <div class="dot y" id="dotY" title="Thu gọn"></div>
           <div class="dot g glow" id="dotG" title="Chạy"></div>
         </div>
-        <div class="ptitle">LMSx</div>
+        <div class="panel-title">LMSx</div>
         <button class="gear-btn" id="flipBtn" title="Cài đặt">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"></circle>
@@ -46,7 +46,7 @@ const HTML = `
           <div class="dot y"></div>
           <div class="dot g"></div>
         </div>
-        <div class="ptitle">Cài đặt</div>
+        <div class="panel-title">Cài đặt</div>
         <div style="width:17px"></div>
       </div>
 

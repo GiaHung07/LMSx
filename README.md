@@ -11,7 +11,7 @@
 ╚══════╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝
 </pre>
 
-**PTIT LMS Automation · Chrome Extension MV3**
+**LMS Automation · Chrome Extension MV3**
 
 [![Version](https://img.shields.io/badge/version-3.6.2-22c55e?style=flat-square&logo=semanticrelease&logoColor=white)](https://github.com/Giahung07/LMSx)
 [![Chrome](https://img.shields.io/badge/Chrome-MV3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com)
@@ -218,6 +218,6 @@ Nếu bạn có bất kỳ thắc mắc hoặc vấn đề nào liên quan đế
 
 <div align="center">
 
-Made with ♥ by **LanMan** · PTIT · Manifest V3
+Made with ♥ by **LanMan** · Manifest V3
 
 </div>

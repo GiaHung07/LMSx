@@ -1713,7 +1713,7 @@
     .dot.y:hover::after{content:'−';font-size:9px;color:rgba(0,0,0,.6);opacity:1}
     .dot.g:hover::after{content:'▶';font-size:6px;color:rgba(0,0,0,.6);opacity:1}
 
-    .ptitle{flex:1;text-align:center;font-size:11.5px;font-weight:500;color:rgba(255,255,255,.34);letter-spacing:.09em;font-family:var(--lmsx-font-mono)}
+    .panel-title{flex:1;text-align:center;font-size:11.5px;font-weight:500;color:rgba(255,255,255,.34);letter-spacing:.09em;font-family:var(--lmsx-font-mono)}
     .gear-btn{background:none;border:none;cursor:pointer;padding:8px;margin:-6px;display:flex;align-items:center;color:rgba(255,255,255,.28);transition:color .15s}
     .gear-btn:hover{color:rgba(255,255,255,.65)}
 
@@ -1800,7 +1800,7 @@
               <div class="dot y" id="dotY" title="Thu gọn"></div>
               <div class="dot g glow" id="dotG" title="Chạy"></div>
             </div>
-            <div class="ptitle">LMSx</div>
+            <div class="panel-title">LMSx</div>
             <button class="gear-btn" id="flipBtn" title="Cài đặt">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="3"></circle>
@@ -1838,7 +1838,7 @@
               <div class="dot y"></div>
               <div class="dot g"></div>
             </div>
-            <div class="ptitle">Cài đặt</div>
+            <div class="panel-title">Cài đặt</div>
             <div style="width:17px"></div>
           </div>
     
