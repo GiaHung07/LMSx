@@ -21,8 +21,7 @@
 
 <br/>
 
-*Auto — Video × Quiz × Chuyển bài*
-
+*Auto — Video × Quiz × Chuyển bài
 <br/>
 
 </div>
@@ -83,23 +82,6 @@ Trong quá trình dev có thể dùng:
 node build.js --watch
 ```
 
-### Phát hành tự động
-
-Repo đã có GitHub Actions để tự build và upload file ZIP vào **Releases** khi push tag version.
-
-Ví dụ:
-
-```bash
-git tag v3.6
-git push origin v3.6
-```
-
-Workflow sẽ tự:
-- patch `manifest.json` theo version của tag
-- build `content.js`
-- đóng gói `dist/LMSx-v3.6.zip`
-- upload ZIP vào GitHub Release tương ứng
-
 ### Bước 3 — Load vào Chrome
 
 1. Mở `chrome://extensions`
@@ -127,10 +109,6 @@ llama-3.3-70b-versatile
 Key được lưu qua `chrome.storage.sync` và đồng bộ vào cấu hình nội bộ của extension.
 
 ---
-
-## Sử dụng
-
-Truy cập một khoá học trên `lms.ptit.edu.vn`, panel LMSx sẽ xuất hiện.
 
 ### Điều khiển panel
 
