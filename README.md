@@ -61,35 +61,22 @@ Hệ thống dùng **Shadow DOM** để cách ly UI khỏi trang LMS, **AES-GCM*
 - Chrome >= 109 hoặc Edge >= 109
 - Node.js LTS
 
-### Bước 1 — Lấy source
-
-```bash
-git clone https://github.com/Giahung07/LMSx.git
-cd LMSx
-```
-
-Hoặc tải ZIP rồi giải nén.
-
-### Bước 2 — Build
-
-```bash
-node build.js
-```
-
-Trong quá trình dev có thể dùng:
-
-```bash
-node build.js --watch
-```
-
-### Bước 3 — Load vào Chrome
-
-1. Mở `chrome://extensions`
-2. Bật **Developer mode**
-3. Nhấn **Load unpacked**
-4. Chọn thư mục `LMSx`
+### 🚀 Bước 1 – Tải file
+Truy cập mục **Releases** và tải file **.zip** mới nhất
 
 ---
+
+### 📦 Bước 2 – Giải nén
+Giải nén file `.zip` vừa tải về  
+Bạn sẽ nhận được thư mục `LMSx`
+
+---
+
+### 🌐 Bước 3 – Load vào Chrome
+1. Mở `chrome://extensions`  
+2. Bật **Developer mode**  
+3. Nhấn **Load unpacked**  
+4. Chọn thư mục `LMSx` đã giải nén  
 
 ## Cấu hình API key
 
